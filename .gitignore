@@ -1,0 +1,6 @@
+# local state — never commit your pipeline data
+state.db
+queues/
+cron.log
+__pycache__/
+*.pyc

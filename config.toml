@@ -1,0 +1,40 @@
+# Daily queue agent — configuration
+
+[targets]
+per_day = 10                  # how many companies per daily queue
+company_cooldown_days = 30    # don't re-queue the same company within N days
+# roles to look for at each company (used to build LinkedIn search links)
+people_roles = ["Technical Recruiter", "Engineering Manager"]
+
+[sources]
+enabled = ["remoteok", "remotive", "wwr"]
+remotive_searches = ["react", "frontend", "full stack", "node"]
+wwr_feeds = [
+    "https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
+]
+
+[filters]
+# at least one role keyword must match the job TITLE
+role_keywords = [
+    "senior", "staff", "lead", "principal",
+    "frontend", "front-end", "front end",
+    "fullstack", "full-stack", "full stack",
+]
+# each stack keyword found in title/tags adds to the score
+stack_keywords = [
+    "react", "next.js", "nextjs", "typescript",
+    "node", "nestjs", "azure", "gcp", "javascript",
+]
+# reject if any of these appear in the title
+exclude_keywords = [
+    "junior", "intern", "unpaid", "wordpress", "php",
+    "director", "vp ", "recruiter",
+]
+# keep only jobs whose location allows hiring from Brazil
+# (worldwide / anywhere / LATAM / americas / brazil / global / remote)
+brazil_friendly_only = true
+
+[ollama]
+url = "http://localhost:11434"
+model = "qwen3:4b"
