@@ -13,6 +13,10 @@ That keeps your account safe. The automation is in the research, not the action.
 Python 3.11+ (stdlib only — no pip install needed).
 Optional: [Ollama](https://ollama.com) running locally for `--notes`.
 
+To set up Ollama, run `./install.sh` — it checks for Ollama (offering to
+install it), detects your GPU's VRAM, pulls a model sized to fit, and
+points `config.toml` at it. Pass a name to override: `./install.sh qwen3:8b`.
+
 ## Usage
 
 ```sh

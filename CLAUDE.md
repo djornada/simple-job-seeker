@@ -16,6 +16,10 @@ links; the click is human. This protects the account against bans.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
   state.db. Company names resolve by prefix when unambiguous.
 - config.toml — all configuration (sources, filters, targets, ollama).
+- install.sh — bash setup helper: ensures Ollama is installed, detects GPU
+  VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
+  from a size ladder, pulls it, and updates the `[ollama]` model in
+  config.toml.
 - state.db, queues/ and cron.log are local and gitignored (they contain
   data about real people).
 
