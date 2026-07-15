@@ -197,6 +197,19 @@ def db_connect() -> sqlite3.Connection:
             last_queued TEXT NOT NULL,
             times_queued INTEGER NOT NULL DEFAULT 1
         );
+        CREATE TABLE IF NOT EXISTS queue_items (
+            date TEXT NOT NULL,
+            uid TEXT NOT NULL,
+            source TEXT NOT NULL,
+            company TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            location TEXT NOT NULL DEFAULT '',
+            score REAL NOT NULL DEFAULT 0,
+            note TEXT,
+            done INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (date, uid)
+        );
     """)
     return conn
 
@@ -230,6 +243,23 @@ def mark_queued(conn: sqlite3.Connection, job: Job) -> None:
             last_queued = excluded.last_queued,
             times_queued = times_queued + 1
     """, (job.company.lower(), today))
+
+
+def save_queue(conn: sqlite3.Connection, queue: list[Job],
+               notes: dict[str, str]) -> None:
+    """Persist queue items (feeds the web UI) and mark companies queued."""
+    today = dt.date.today().isoformat()
+    for j in queue:
+        mark_queued(conn, j)
+        conn.execute("""
+            INSERT INTO queue_items
+                (date, uid, source, company, title, url, location, score, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(date, uid) DO UPDATE SET
+                note = COALESCE(queue_items.note, excluded.note)
+        """, (today, j.uid, j.source, j.company, j.title, j.url,
+              j.location, j.score, notes.get(j.uid)))
+    conn.commit()
 
 
 # --------------------------------------------------------------------------- #
@@ -327,6 +357,50 @@ def show_stats(conn: sqlite3.Connection) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Pipeline (shared by the CLI below and webapp.py)
+# --------------------------------------------------------------------------- #
+
+def collect_jobs(cfg: dict) -> list[Job]:
+    """Fetch every enabled source; a dead board logs a warning, not a crash."""
+    all_jobs: list[Job] = []
+    for name in cfg["sources"].get("enabled", ["remoteok", "remotive"]):
+        fetcher = FETCHERS.get(name)
+        if not fetcher:
+            print(f"[warn] unknown source: {name}", file=sys.stderr)
+            continue
+        try:
+            fetched = fetcher(cfg)
+            print(f"[ok] {name}: {len(fetched)} jobs", file=sys.stderr)
+            all_jobs.extend(fetched)
+        except Exception as e:  # noqa: BLE001 — a dead board shouldn't kill the run
+            print(f"[warn] {name} failed: {e}", file=sys.stderr)
+    return all_jobs
+
+
+def select_queue(conn: sqlite3.Connection, jobs: list[Job], cfg: dict,
+                 limit: int, cooldown: int) -> list[Job]:
+    """Score, filter, dedupe (one job per company) and cap the queue."""
+    for job in jobs:
+        job.score = score_job(job, cfg)
+    candidates = [j for j in jobs if j.score > 0 and j.company and j.url]
+    candidates.sort(key=lambda j: j.score, reverse=True)
+
+    queue: list[Job] = []
+    seen_companies: set[str] = set()
+    for job in candidates:
+        key = job.company.lower()
+        if key in seen_companies:
+            continue
+        if not is_new(conn, job, cooldown):
+            continue
+        queue.append(job)
+        seen_companies.add(key)
+        if len(queue) >= limit:
+            break
+    return queue
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
 
@@ -348,37 +422,7 @@ def main() -> int:
     limit = args.n or cfg["targets"].get("per_day", 10)
     cooldown = cfg["targets"].get("company_cooldown_days", 30)
 
-    all_jobs: list[Job] = []
-    for name in cfg["sources"].get("enabled", ["remoteok", "remotive"]):
-        fetcher = FETCHERS.get(name)
-        if not fetcher:
-            print(f"[warn] unknown source: {name}", file=sys.stderr)
-            continue
-        try:
-            fetched = fetcher(cfg)
-            print(f"[ok] {name}: {len(fetched)} jobs", file=sys.stderr)
-            all_jobs.extend(fetched)
-        except Exception as e:  # noqa: BLE001 — a dead board shouldn't kill the run
-            print(f"[warn] {name} failed: {e}", file=sys.stderr)
-
-    for job in all_jobs:
-        job.score = score_job(job, cfg)
-
-    candidates = [j for j in all_jobs if j.score > 0 and j.company and j.url]
-    candidates.sort(key=lambda j: j.score, reverse=True)
-
-    queue: list[Job] = []
-    seen_companies: set[str] = set()
-    for job in candidates:
-        key = job.company.lower()
-        if key in seen_companies:
-            continue
-        if not is_new(conn, job, cooldown):
-            continue
-        queue.append(job)
-        seen_companies.add(key)
-        if len(queue) >= limit:
-            break
+    queue = select_queue(conn, collect_jobs(cfg), cfg, limit, cooldown)
 
     links = {j.uid: build_links(j, cfg) for j in queue}
     notes: dict[str, str] = {}
@@ -396,9 +440,7 @@ def main() -> int:
     print(output)
 
     if not args.dry_run and queue:
-        for j in queue:
-            mark_queued(conn, j)
-        conn.commit()
+        save_queue(conn, queue, notes)
         OUT_DIR.mkdir(exist_ok=True)
         out_file = OUT_DIR / f"{dt.date.today().isoformat()}.md"
         out_file.write_text(output)

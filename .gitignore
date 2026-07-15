@@ -4,3 +4,4 @@ queues/
 cron.log
 __pycache__/
 *.pyc
+.serena/

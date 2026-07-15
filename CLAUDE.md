@@ -15,6 +15,11 @@ links; the click is human. This protects the account against bans.
   Ollama model.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
   state.db. Company names resolve by prefix when unambiguous.
+- webapp.py — local web UI over the same pipeline + state.db (pure stdlib
+  http.server, binds 127.0.0.1). Daily queue with per-target check-off and
+  Ollama note drafting, plus outreach board/due/log/history. Builds run in
+  a background thread; queue items persist in the queue_items table.
+  Generates links only; the click is still human.
 - config.toml — all configuration (sources, filters, targets, ollama).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
@@ -31,5 +36,5 @@ links; the click is human. This protects the account against bans.
 ## Owner context
 Senior SWE / Tech Lead, stack React/Next/TS/Node/NestJS, based in Brazil,
 looking for international remote roles (hence the `brazil_friendly_only`
-location filter). Local Ollama on an RTX 3050 6GB — models up to ~4B in
-Q4 fit entirely on the GPU.
+location filter). Local Ollama on an AMD Radeon RX 6700 XT 12GB — models
+up to ~14B in Q4 fit entirely on the GPU.

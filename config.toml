@@ -35,6 +35,10 @@ exclude_keywords = [
 # (worldwide / anywhere / LATAM / americas / brazil / global / remote)
 brazil_friendly_only = true
 
+[web]
+host = "127.0.0.1"   # keep it local: state.db holds data about real people
+port = 8765
+
 [ollama]
 url = "http://localhost:11434"
-model = "qwen3:4b"
+model = "qwen3:14b"
