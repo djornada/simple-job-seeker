@@ -1,4 +1,4 @@
-# linkedin-queue
+# simple-job-seeker
 
 Personal tooling to support a remote job search.
 

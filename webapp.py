@@ -297,7 +297,7 @@ def page(title: str, active: str, body: str, refresh: bool = False) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-{meta}<title>{esc(title)} · linkedin-queue</title>
+{meta}<title>{esc(title)} · simple-job-seeker</title>
 <style>{CSS}</style>
 </head><body>
 <div class="wrap">
@@ -741,7 +741,7 @@ GET_ROUTES = {
 # --------------------------------------------------------------------------- #
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "linkedin-queue-web/1.0"
+    server_version = "simple-job-seeker-web/1.0"
 
     def respond(self, body: str, status: HTTPStatus = HTTPStatus.OK) -> None:
         data = body.encode()
@@ -888,7 +888,7 @@ def main() -> int:
     qa.db_connect().close()
     tracker.db_connect().close()
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"linkedin-queue web UI on http://{host}:{port}  (Ctrl-C to stop)")
+    print(f"simple-job-seeker web UI on http://{host}:{port}  (Ctrl-C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

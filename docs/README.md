@@ -1,8 +1,8 @@
-# linkedin-queue
+# simple-job-seeker
 
 **A personal, self-hosted assistant for a remote job search.**
 
-linkedin-queue turns the daily grind of a job hunt into a short, decided
+simple-job-seeker turns the daily grind of a job hunt into a short, decided
 checklist. Every morning it pulls fresh roles from remote job boards, ranks
 them against what you're actually looking for (and, optionally, your real
 résumé), and hands you a small queue of companies to reach out to — each one

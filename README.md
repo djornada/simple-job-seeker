@@ -1,8 +1,8 @@
-# linkedin-queue
+# simple-job-seeker
 
-Daily target queue for LinkedIn outreach. Fetches remote job boards, filters
-roles matching your profile, dedups against local state, and outputs a
-markdown queue with prebuilt LinkedIn search links.
+Daily target queue for your remote job-search outreach. Fetches remote job
+boards, filters roles matching your profile, dedups against local state, and
+outputs a markdown queue with prebuilt LinkedIn search links.
 
 **Design principle: the script decides, you click.** Nothing here touches
 LinkedIn programmatically — no scraping, no automated visits, no auto-connect.
@@ -70,7 +70,7 @@ connection sent (with `--followup 5`), and `tracker.py due` every morning.
 
 ```cron
 # weekdays at 8:30
-30 8 * * 1-5 cd /path/to/linkedin-queue && python3 queue_agent.py > /dev/null 2>> cron.log
+30 8 * * 1-5 cd /path/to/simple-job-seeker && python3 queue_agent.py > /dev/null 2>> cron.log
 ```
 
 The queue lands in `queues/` either way, so you can read it whenever.

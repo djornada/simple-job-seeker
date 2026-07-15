@@ -15,8 +15,8 @@ This gets you from a fresh clone to your first daily queue in a few minutes.
 ## 1. Get the code
 
 ```bash
-git clone <your-repo-url> linkedin-queue
-cd linkedin-queue
+git clone <your-repo-url> simple-job-seeker
+cd simple-job-seeker
 ```
 
 Nothing to build or install.
@@ -98,7 +98,7 @@ Details and how to get the ZIP: [Résumé matching](resume-matching.md).
 `queue_agent.py` is a natural cron job. For example, weekdays at 8am:
 
 ```cron
-0 8 * * 1-5  cd /path/to/linkedin-queue && /usr/bin/python3 queue_agent.py --notes >> cron.log 2>&1
+0 8 * * 1-5  cd /path/to/simple-job-seeker && /usr/bin/python3 queue_agent.py --notes >> cron.log 2>&1
 ```
 
 Then just open the web UI whenever you sit down to work the list.
