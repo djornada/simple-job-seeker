@@ -26,35 +26,16 @@ import sys
 import tomllib
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
 from pathlib import Path
+
+# Job sources live in the sources/ package; Job + collect_jobs are re-exported
+# here so webapp.py and profile.py keep using `qa.Job` / `qa.collect_jobs`.
+from sources import Job, collect_jobs  # noqa: F401
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.toml"
 DB_PATH = BASE_DIR / "state.db"
 OUT_DIR = BASE_DIR / "queues"
-
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) queue-agent/1.0 (personal job search tool)"
-
-
-# --------------------------------------------------------------------------- #
-# Data model
-# --------------------------------------------------------------------------- #
-
-@dataclass
-class Job:
-    source: str
-    title: str
-    company: str
-    url: str
-    tags: list[str] = field(default_factory=list)
-    location: str = ""
-    score: float = 0.0
-
-    @property
-    def uid(self) -> str:
-        return f"{self.source}:{self.url}"
 
 
 # --------------------------------------------------------------------------- #
@@ -64,81 +45,6 @@ class Job:
 def load_config() -> dict:
     with open(CONFIG_PATH, "rb") as f:
         return tomllib.load(f)
-
-
-# --------------------------------------------------------------------------- #
-# Fetchers (all public endpoints / feeds; no LinkedIn automation)
-# --------------------------------------------------------------------------- #
-
-def _get(url: str, timeout: int = 20) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
-
-
-def fetch_remoteok() -> list[Job]:
-    data = json.loads(_get("https://remoteok.com/api"))
-    jobs = []
-    for item in data:
-        if not isinstance(item, dict) or "position" not in item:
-            continue  # first element is API metadata
-        jobs.append(Job(
-            source="remoteok",
-            title=item.get("position", ""),
-            company=item.get("company", ""),
-            url=item.get("url", ""),
-            tags=[t.lower() for t in item.get("tags", [])],
-            location=item.get("location", ""),
-        ))
-    return jobs
-
-
-def fetch_remotive(search_terms: list[str]) -> list[Job]:
-    jobs = []
-    for term in search_terms:
-        q = urllib.parse.quote(term)
-        url = f"https://remotive.com/api/remote-jobs?search={q}&limit=50"
-        data = json.loads(_get(url))
-        for item in data.get("jobs", []):
-            jobs.append(Job(
-                source="remotive",
-                title=item.get("title", ""),
-                company=item.get("company_name", ""),
-                url=item.get("url", ""),
-                tags=[t.lower() for t in item.get("tags", [])],
-                location=item.get("candidate_required_location", ""),
-            ))
-    return jobs
-
-
-def fetch_wwr(feeds: list[str]) -> list[Job]:
-    jobs = []
-    for feed_url in feeds:
-        root = ET.fromstring(_get(feed_url))
-        for item in root.iter("item"):
-            title_el = item.find("title")
-            link_el = item.find("link")
-            if title_el is None or link_el is None:
-                continue
-            raw = title_el.text or ""
-            # WWR titles look like "Company: Job Title"
-            company, _, title = raw.partition(":")
-            if not title:
-                title, company = raw, ""
-            jobs.append(Job(
-                source="wwr",
-                title=title.strip(),
-                company=company.strip(),
-                url=(link_el.text or "").strip(),
-            ))
-    return jobs
-
-
-FETCHERS = {
-    "remoteok": lambda cfg: fetch_remoteok(),
-    "remotive": lambda cfg: fetch_remotive(cfg["sources"].get("remotive_searches", ["react"])),
-    "wwr": lambda cfg: fetch_wwr(cfg["sources"].get("wwr_feeds", [])),
-}
 
 
 # --------------------------------------------------------------------------- #
@@ -208,9 +114,25 @@ def db_connect() -> sqlite3.Connection:
             score REAL NOT NULL DEFAULT 0,
             note TEXT,
             done INTEGER NOT NULL DEFAULT 0,
+            description TEXT,
+            fit_note TEXT,
+            llm_score REAL,
             PRIMARY KEY (date, uid)
         );
+        CREATE TABLE IF NOT EXISTS profile (
+            id          INTEGER PRIMARY KEY CHECK (id = 1),
+            text        TEXT NOT NULL,
+            headline    TEXT,
+            skills_json TEXT,
+            imported_at TEXT
+        );
     """)
+    # resume-in-the-loop columns on pre-existing DBs (fresh DBs get them above)
+    for col in ("description TEXT", "fit_note TEXT", "llm_score REAL"):
+        try:
+            conn.execute(f"ALTER TABLE queue_items ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return conn
 
 
@@ -253,12 +175,16 @@ def save_queue(conn: sqlite3.Connection, queue: list[Job],
         mark_queued(conn, j)
         conn.execute("""
             INSERT INTO queue_items
-                (date, uid, source, company, title, url, location, score, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (date, uid, source, company, title, url, location, score, note,
+                 description, fit_note, llm_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(date, uid) DO UPDATE SET
-                note = COALESCE(queue_items.note, excluded.note)
+                note = COALESCE(queue_items.note, excluded.note),
+                fit_note = COALESCE(excluded.fit_note, queue_items.fit_note),
+                llm_score = COALESCE(excluded.llm_score, queue_items.llm_score)
         """, (today, j.uid, j.source, j.company, j.title, j.url,
-              j.location, j.score, notes.get(j.uid)))
+              j.location, j.score, notes.get(j.uid),
+              j.description, j.fit_note or None, j.llm_score))
     conn.commit()
 
 
@@ -286,36 +212,144 @@ def build_links(job: Job, cfg: dict) -> dict[str, str]:
 
 
 # --------------------------------------------------------------------------- #
-# Optional: draft connection notes with a local model (Ollama)
+# Imported resume profile (populated by profile.py; optional)
 # --------------------------------------------------------------------------- #
 
-def draft_note(job: Job, cfg: dict) -> str | None:
+def load_profile_text(conn: sqlite3.Connection) -> str | None:
+    """Compact resume text for the LLM re-rank, or None if never imported."""
+    try:
+        row = conn.execute("SELECT text FROM profile WHERE id = 1").fetchone()
+    except sqlite3.OperationalError:
+        return None
+    return row[0] if row else None
+
+
+def load_profile_bits(conn: sqlite3.Connection) -> tuple[str, list[str]] | None:
+    """Headline + skills for note personalization, or None if never imported."""
+    try:
+        row = conn.execute(
+            "SELECT headline, skills_json FROM profile WHERE id = 1").fetchone()
+    except sqlite3.OperationalError:
+        return None
+    if not row:
+        return None
+    return (row[0] or ""), (json.loads(row[1]) if row[1] else [])
+
+
+# --------------------------------------------------------------------------- #
+# Local model (Ollama) — connection notes and resume re-rank
+# --------------------------------------------------------------------------- #
+
+def _strip_think(text: str) -> str:
+    """qwen3 leaks <think>…</think> even with think disabled; drop it."""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
+def _ollama_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
+                     options: dict | None = None, timeout: int = 300) -> str | None:
+    """One /api/generate call. Returns raw response text, or None if unreachable."""
     o = cfg.get("ollama", {})
-    prompt = (
-        "Write a LinkedIn connection note under 200 characters, in English. "
-        "From: a senior software engineer / tech lead (React, TypeScript, Node.js) "
-        "reaching out about a role. Friendly, direct, no agency-speak, no emojis, "
-        "no 'I hope this finds you well'. Mention the company naturally.\n\n"
-        f"Company: {job.company}\nRole: {job.title}\n\n"
-        "Reply with the note text only."
-    )
-    body = json.dumps({
+    payload: dict = {
         "model": o.get("model", "qwen3:4b"),
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0.7},
-    }).encode()
+        "think": False,
+    }
+    if fmt:
+        payload["format"] = fmt
+    if options:
+        payload["options"] = options
     req = urllib.request.Request(
         o.get("url", "http://localhost:11434") + "/api/generate",
-        data=body,
+        data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            note = json.loads(resp.read()).get("response", "").strip().strip('"')
-            return note[:200] if note else None
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read()).get("response", "")
     except OSError:
         return None
+
+
+def draft_note(job: Job, cfg: dict) -> str | None:
+    conn = db_connect()
+    bits = load_profile_bits(conn)
+    conn.close()
+    if bits and bits[0]:
+        headline, skills = bits
+        sender = f"a {headline}"
+        if skills:
+            sender += f" (core skills: {', '.join(skills[:6])})"
+    else:
+        sender = ("a senior software engineer / tech lead "
+                  "(React, TypeScript, Node.js)")
+    prompt = (
+        "Write a LinkedIn connection note under 200 characters, in English. "
+        f"From: {sender} reaching out about a role. Friendly, direct, no "
+        "agency-speak, no emojis, no 'I hope this finds you well'. Mention the "
+        "company naturally.\n\n"
+        f"Company: {job.company}\nRole: {job.title}\n\n"
+        "Reply with the note text only."
+    )
+    raw = _ollama_generate(cfg, prompt, options={"temperature": 0.7})
+    if raw is None:
+        return None
+    note = _strip_think(raw).strip().strip('"')
+    return note[:200] if note else None
+
+
+def _llm_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
+    """Score one job against the profile. None = Ollama unreachable."""
+    prompt = (
+        "Rate how well a remote job fits a candidate, 0-10, based only on the "
+        "profile and the posting. Reply as JSON only: "
+        '{"score": <integer 0-10>, "fit": "<one line: why it fits / what to '
+        'emphasize>"}.\n\n'
+        f"CANDIDATE PROFILE:\n{profile_text}\n\n"
+        f"JOB\nTitle: {job.title}\nCompany: {job.company}\n"
+        f"Description: {job.description}\n"
+    )
+    raw = _ollama_generate(cfg, prompt, fmt="json")
+    if raw is None:
+        return None
+    try:
+        data = json.loads(_strip_think(raw))
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    try:
+        score = float(data.get("score", 0))
+    except (TypeError, ValueError):
+        score = 0.0
+    return {"score": score, "fit": str(data.get("fit", "")).strip()}
+
+
+def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Job]:
+    """Re-rank keyword-gated jobs by LLM-judged fit with the resume.
+
+    LLM score is primary, keyword score the tiebreak. Jobs below
+    `[resume].min_llm_score` are dropped. If Ollama is unreachable the stage
+    is a no-op and the keyword order is returned untouched.
+    """
+    r = cfg.get("resume", {})
+    shortlist = r.get("shortlist", 30)
+    floor = r.get("min_llm_score", 5)
+
+    ranked = sorted(jobs, key=lambda j: j.score, reverse=True)
+    head, tail = ranked[:shortlist], ranked[shortlist:]
+
+    scored: list[Job] = []
+    for job in head:
+        result = _llm_fit(job, profile_text, cfg)
+        if result is None:  # Ollama died mid-run: keep the keyword order
+            return jobs
+        job.llm_score = result.get("score", 0.0)
+        job.fit_note = result.get("fit", "")
+        scored.append(job)
+
+    if floor:
+        scored = [j for j in scored if (j.llm_score or 0) >= floor]
+    scored.sort(key=lambda j: (j.llm_score or 0, j.score), reverse=True)
+    return scored + tail
 
 
 # --------------------------------------------------------------------------- #
@@ -333,6 +367,10 @@ def render(queue: list[Job], links: dict[str, dict[str, str]],
         lines.append(f"- Job post: {job.url}")
         if job.location:
             lines.append(f"- Location: {job.location}")
+        if job.llm_score is not None:
+            lines.append(f"- Fit score: {job.llm_score:g}/10")
+        if job.fit_note:
+            lines.append(f"- Fit: {job.fit_note}")
         for label, url in links[job.uid].items():
             lines.append(f"- {label}: {url}")
         if job.uid in notes:
@@ -357,25 +395,8 @@ def show_stats(conn: sqlite3.Connection) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Pipeline (shared by the CLI below and webapp.py)
+# Pipeline (shared by the CLI below and webapp.py; fetching lives in sources/)
 # --------------------------------------------------------------------------- #
-
-def collect_jobs(cfg: dict) -> list[Job]:
-    """Fetch every enabled source; a dead board logs a warning, not a crash."""
-    all_jobs: list[Job] = []
-    for name in cfg["sources"].get("enabled", ["remoteok", "remotive"]):
-        fetcher = FETCHERS.get(name)
-        if not fetcher:
-            print(f"[warn] unknown source: {name}", file=sys.stderr)
-            continue
-        try:
-            fetched = fetcher(cfg)
-            print(f"[ok] {name}: {len(fetched)} jobs", file=sys.stderr)
-            all_jobs.extend(fetched)
-        except Exception as e:  # noqa: BLE001 — a dead board shouldn't kill the run
-            print(f"[warn] {name} failed: {e}", file=sys.stderr)
-    return all_jobs
-
 
 def select_queue(conn: sqlite3.Connection, jobs: list[Job], cfg: dict,
                  limit: int, cooldown: int) -> list[Job]:
@@ -422,7 +443,14 @@ def main() -> int:
     limit = args.n or cfg["targets"].get("per_day", 10)
     cooldown = cfg["targets"].get("company_cooldown_days", 30)
 
-    queue = select_queue(conn, collect_jobs(cfg), cfg, limit, cooldown)
+    # With a resume imported, gate a wider shortlist so the LLM has room to
+    # re-rank; without one, behave exactly as before.
+    profile_text = load_profile_text(conn)
+    pool = max(limit, cfg.get("resume", {}).get("shortlist", 30)) if profile_text else limit
+    candidates = select_queue(conn, collect_jobs(cfg), cfg, pool, cooldown)
+    if profile_text:
+        candidates = rerank_with_resume(candidates, profile_text, cfg)
+    queue = candidates[:limit]
 
     links = {j.uid: build_links(j, cfg) for j in queue}
     notes: dict[str, str] = {}

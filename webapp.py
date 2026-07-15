@@ -65,7 +65,13 @@ def build_worker(with_notes: bool) -> None:
         conn = qa.db_connect()
         limit = cfg["targets"].get("per_day", 10)
         cooldown = cfg["targets"].get("company_cooldown_days", 30)
-        queue = qa.select_queue(conn, qa.collect_jobs(cfg), cfg, limit, cooldown)
+        profile_text = qa.load_profile_text(conn)
+        pool = (max(limit, cfg.get("resume", {}).get("shortlist", 30))
+                if profile_text else limit)
+        candidates = qa.select_queue(conn, qa.collect_jobs(cfg), cfg, pool, cooldown)
+        if profile_text:
+            candidates = qa.rerank_with_resume(candidates, profile_text, cfg)
+        queue = candidates[:limit]
         notes: dict[str, str] = {}
         if with_notes:
             for j in queue:
@@ -186,6 +192,19 @@ p.note { margin: 8px 0 0; font-size: 13.5px; background: var(--paper);
 p.note .len { font-family: var(--mono); font-size: 11px; color: var(--muted);
   margin-left: 6px; }
 p.note.pending { color: var(--muted); font-style: italic; }
+p.fit { margin: 6px 0 0; font-size: 13px; color: var(--accent-ink);
+  border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; }
+p.fit .llm { font-family: var(--mono); font-size: 11px; color: var(--muted);
+  margin-right: 6px; }
+table.stats { width: 100%; border-collapse: collapse; font-size: 14px;
+  margin: 4px 0 8px; }
+table.stats th, table.stats td { text-align: right; padding: 6px 10px;
+  border-bottom: 1px solid var(--line); }
+table.stats th:first-child, table.stats td:first-child { text-align: left; }
+table.stats th { font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); font-weight: 600; }
+table.stats td.rate { font-family: var(--mono); }
+.caveat { color: var(--muted); font-size: 12.5px; margin: 2px 0 18px; }
 button.ghost { background: none; border: 1px solid var(--line);
   border-radius: 6px; padding: 4px 10px; font-size: 12.5px;
   color: var(--accent-ink); cursor: pointer; }
@@ -218,7 +237,8 @@ input, select { font: 14px system-ui; padding: 7px 9px;
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 """
 
-TABS = [("/", "Queue"), ("/board", "Board"), ("/due", "Due"), ("/log", "Log")]
+TABS = [("/", "Queue"), ("/board", "Board"), ("/due", "Due"), ("/log", "Log"),
+        ("/stats", "Stats")]
 
 
 def page(title: str, active: str, body: str, refresh: bool = False) -> str:
@@ -283,8 +303,11 @@ def page_queue(params: dict[str, list[str]]) -> str:
     if not DATE_RE.fullmatch(date):
         date = dates[0] if dates else today
     rows = conn.execute(
-        "SELECT * FROM queue_items WHERE date = ? ORDER BY score DESC, company",
+        "SELECT * FROM queue_items WHERE date = ? "
+        "ORDER BY llm_score IS NULL, llm_score DESC, score DESC, company",
         (date,)).fetchall()
+    prow = conn.execute(
+        "SELECT headline FROM profile WHERE id = 1").fetchone()
     conn.close()
 
     cfg = qa.load_config()
@@ -303,10 +326,12 @@ def page_queue(params: dict[str, list[str]]) -> str:
     build_label = ("Fetch more targets" if rows and date == today
                    else "Build today’s queue")
     disabled = " disabled" if building else ""
+    resume = (f" · résumé: {esc(prow['headline'] or 'imported')}" if prow
+              else " · no résumé imported")
     manifest = f"""
 <div class="manifest">
   <div>
-    <div class="eyebrow">Daily queue · {weekday}</div>
+    <div class="eyebrow">Daily queue · {weekday}{resume}</div>
     <h1>{date}</h1>
   </div>
   {progress}
@@ -342,6 +367,12 @@ def page_queue(params: dict[str, list[str]]) -> str:
             meta_bits.append(esc(r["location"]))
         meta_bits.append(esc(r["source"]))
 
+        fit_html = ""
+        if r["fit_note"]:
+            band = (f'<span class="llm">fit {r["llm_score"]:g}/10</span>'
+                    if r["llm_score"] is not None else "")
+            fit_html = f'<p class="fit">{band}{esc(r["fit_note"])}</p>'
+
         if r["note"]:
             note_html = (f'<p class="note">“{esc(r["note"])}”'
                          f'<span class="len">{len(r["note"])}/200</span></p>')
@@ -366,6 +397,7 @@ def page_queue(params: dict[str, list[str]]) -> str:
     <h2>{esc(r['company'])} <span class="score">{r['score']:g}</span></h2>
     <p class="meta">{' · '.join(meta_bits)}</p>
     <p class="linkrow">{' '.join(linkrow)}</p>
+    {fit_html}
     {note_html}
   </div>
 </article>""")
@@ -515,12 +547,94 @@ def page_company(params: dict[str, list[str]]) -> str:
     return page(company, "/board", head + body)
 
 
+def _best_stage_by_company(conn: sqlite3.Connection) -> dict[str, int]:
+    """Furthest funnel stage reached per company (lower-cased name → weight)."""
+    best: dict[str, int] = {}
+    for r in conn.execute("SELECT company, action FROM outreach"):
+        key = (r["company"] or "").lower()
+        weight = tracker.STAGE_ORDER.get(r["action"], -1)
+        if weight > best.get(key, -1):
+            best[key] = weight
+    return best
+
+
+def _stats_table(header: str, rows: list[tuple]) -> str:
+    """rows: list of (label, queued, contacted, replied)."""
+    trs = []
+    for label, queued, contacted, replied in rows:
+        rate = f"{replied / queued:.0%}" if queued else "—"
+        trs.append(
+            f"<tr><td>{esc(label)}</td><td>{queued}</td><td>{contacted}</td>"
+            f"<td>{replied}</td><td class='rate'>{rate}</td></tr>")
+    return (f'<section class="stage"><h2>{esc(header)}</h2></section>'
+            '<table class="stats"><thead><tr><th>source</th><th>queued</th>'
+            '<th>contacted</th><th>replied</th><th>reply rate</th></tr></thead>'
+            f'<tbody>{"".join(trs)}</tbody></table>')
+
+
+def page_stats(_: dict[str, list[str]]) -> str:
+    conn = db()
+    qrows = conn.execute(
+        "SELECT source, LOWER(company) AS company, llm_score "
+        "FROM queue_items").fetchall()
+    best = _best_stage_by_company(conn)
+    conn.close()
+
+    if not qrows:
+        return page("Stats", "/stats",
+                    '<p class="empty">No queue history yet. '
+                    '<a href="/">Build a queue</a> first.</p>')
+
+    contacted_w = tracker.STAGE_ORDER["connected"]
+    replied_w = tracker.STAGE_ORDER["replied"]
+
+    def tally(bucket: dict, key: str, company: str) -> None:
+        st = bucket.setdefault(key, {"companies": set(), "contacted": set(),
+                                     "replied": set()})
+        st["companies"].add(company)
+        stage = best.get(company, -1)
+        if stage >= contacted_w:
+            st["contacted"].add(company)
+        if stage >= replied_w:
+            st["replied"].add(company)
+
+    by_source: dict[str, dict] = {}
+    by_band: dict[str, dict] = {}
+    BANDS = [(9, "9–10"), (7, "7–8"), (5, "5–6"), (0, "0–4")]
+    have_llm = False
+    for r in qrows:
+        tally(by_source, r["source"], r["company"])
+        if r["llm_score"] is not None:
+            have_llm = True
+            band = next(lbl for lo, lbl in BANDS if r["llm_score"] >= lo)
+            tally(by_band, band, r["company"])
+
+    def to_rows(bucket: dict, order: list | None = None) -> list[tuple]:
+        keys = order if order else sorted(bucket)
+        return [(k, len(bucket[k]["companies"]), len(bucket[k]["contacted"]),
+                 len(bucket[k]["replied"])) for k in keys if k in bucket]
+
+    src_rows = sorted(to_rows(by_source), key=lambda x: -x[1])
+    body = _stats_table("effectiveness by source", src_rows)
+
+    if have_llm:
+        band_rows = to_rows(by_band, [lbl for _, lbl in BANDS])
+        body += _stats_table("conversion by fit-score band", band_rows)
+
+    body += ('<p class="caveat">Companies are matched between the queue and '
+             'outreach log by lower-cased name — loose, but fine for personal '
+             'tooling. “Contacted” = reached at least the connected stage; '
+             '“replied” = the company answered.</p>')
+    return page("Stats", "/stats", body)
+
+
 GET_ROUTES = {
     "/": page_queue,
     "/board": page_board,
     "/due": page_due,
     "/log": page_log,
     "/company": page_company,
+    "/stats": page_stats,
 }
 
 

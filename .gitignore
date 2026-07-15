@@ -5,3 +5,5 @@ cron.log
 __pycache__/
 *.pyc
 .serena/
+# LinkedIn data-export archives — never commit your resume dump
+*.zip

@@ -7,7 +7,7 @@ company_cooldown_days = 30    # don't re-queue the same company within N days
 people_roles = ["Technical Recruiter", "Engineering Manager"]
 
 [sources]
-enabled = ["remoteok", "remotive", "wwr"]
+enabled = ["remoteok", "remotive", "wwr", "hn"]  # hn = HN "Who is hiring?"
 remotive_searches = ["react", "frontend", "full stack", "node"]
 wwr_feeds = [
     "https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss",
@@ -35,10 +35,17 @@ exclude_keywords = [
 # (worldwide / anywhere / LATAM / americas / brazil / global / remote)
 brazil_friendly_only = true
 
+# Resume-in-the-loop: LLM re-rank of the keyword-gated queue against your
+# imported profile (python profile.py import <export.zip>). With no profile
+# or Ollama down, the pipeline stays keyword-only.
+[resume]
+shortlist = 30       # jobs sent to LLM re-rank after keyword gate
+min_llm_score = 5    # drop jobs the model scores below this (0 disables)
+
 [web]
 host = "127.0.0.1"   # keep it local: state.db holds data about real people
-port = 8765
+port = 3000
 
 [ollama]
 url = "http://localhost:11434"
-model = "qwen3:14b"
+model = "qwen3.5"
