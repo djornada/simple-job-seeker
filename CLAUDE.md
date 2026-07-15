@@ -24,8 +24,9 @@ links; the click is human. This protects the account against bans.
   with no profile or Ollama down it stays keyword-only. Optional `--notes`
   drafts sub-200-char connection notes via a local Ollama model, seeded with
   the imported headline + skills when present.
-- profile.py — resume ingestion CLI (`import <export.zip>` / `show`). Reads
-  a LinkedIn data-export ZIP from local disk (nothing touches LinkedIn),
+- profile.py — resume ingestion (`import <export.zip>` / `show` CLI, plus a
+  reusable `ingest(source)` that takes a path or file-like object). Reads a
+  LinkedIn data-export ZIP from local disk (nothing touches LinkedIn),
   builds a compact profile text, and stores it in the `profile` table of
   state.db. Feeds the re-rank stage and connection notes.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
@@ -33,9 +34,12 @@ links; the click is human. This protects the account against bans.
 - webapp.py — local web UI over the same pipeline + state.db (pure stdlib
   http.server, binds 127.0.0.1). Daily queue with per-target check-off, fit
   notes, a résumé indicator, and Ollama note drafting, plus outreach
-  board/due/log/history and a `/stats` source-effectiveness page. Builds run
-  in a background thread; queue items persist in the queue_items table.
-  Generates links only; the click is still human.
+  board/due/log/history, a `/stats` source-effectiveness page, and a
+  `/profile` page to upload the LinkedIn export ZIP (multipart handled by a
+  small in-house parser — stdlib dropped `cgi` in 3.13 — then `profile.ingest`;
+  file is read locally, nothing is sent to LinkedIn). Builds run in a
+  background thread; queue items persist in the queue_items table. Generates
+  links only; the click is still human.
 - config.toml — all configuration (sources, filters, targets, resume,
   ollama).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU

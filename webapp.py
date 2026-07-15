@@ -23,13 +23,17 @@ from __future__ import annotations
 
 import datetime as dt
 import html
+import io
+import json
 import re
 import sqlite3
 import threading
 import urllib.parse
+import zipfile
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import profile
 import queue_agent as qa
 import tracker
 
@@ -53,6 +57,34 @@ def db() -> sqlite3.Connection:
 
 def esc(text: object) -> str:
     return html.escape(str(text), quote=True)
+
+
+def parse_multipart(content_type: str, body: bytes) -> dict[str, bytes]:
+    """Minimal multipart/form-data parser (stdlib dropped `cgi` in 3.13).
+
+    Returns field-name → raw bytes; enough for a single file upload and
+    binary-safe (the payload is never decoded). `\\bname=` avoids matching
+    the `filename=` parameter.
+    """
+    m = re.search(r"boundary=([^;]+)", content_type)
+    if not m:
+        return {}
+    boundary = b"--" + m.group(1).strip().strip('"').encode()
+    fields: dict[str, bytes] = {}
+    for chunk in body.split(boundary):
+        if not chunk or chunk[:2] == b"--":      # preamble / closing delimiter
+            continue
+        if chunk[:2] == b"\r\n":
+            chunk = chunk[2:]
+        head, sep, content = chunk.partition(b"\r\n\r\n")
+        if not sep:
+            continue
+        if content.endswith(b"\r\n"):
+            content = content[:-2]
+        name = re.search(r'\bname="([^"]*)"', head.decode("utf-8", "replace"))
+        if name:
+            fields[name.group(1)] = content
+    return fields
 
 
 # --------------------------------------------------------------------------- #
@@ -205,6 +237,12 @@ table.stats th { font-family: var(--mono); font-size: 11px; letter-spacing: .06e
   text-transform: uppercase; color: var(--muted); font-weight: 600; }
 table.stats td.rate { font-family: var(--mono); }
 .caveat { color: var(--muted); font-size: 12.5px; margin: 2px 0 18px; }
+pre.profiletext { white-space: pre-wrap; word-break: break-word;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; font: 12.5px/1.55 var(--mono); color: var(--ink);
+  margin: 4px 0 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 18px; }
+input[type=file] { padding: 6px; background: var(--card); cursor: pointer; }
 button.ghost { background: none; border: 1px solid var(--line);
   border-radius: 6px; padding: 4px 10px; font-size: 12.5px;
   color: var(--accent-ink); cursor: pointer; }
@@ -238,7 +276,7 @@ input, select { font: 14px system-ui; padding: 7px 9px;
 """
 
 TABS = [("/", "Queue"), ("/board", "Board"), ("/due", "Due"), ("/log", "Log"),
-        ("/stats", "Stats")]
+        ("/stats", "Stats"), ("/profile", "Résumé")]
 
 
 def page(title: str, active: str, body: str, refresh: bool = False) -> str:
@@ -326,8 +364,8 @@ def page_queue(params: dict[str, list[str]]) -> str:
     build_label = ("Fetch more targets" if rows and date == today
                    else "Build today’s queue")
     disabled = " disabled" if building else ""
-    resume = (f" · résumé: {esc(prow['headline'] or 'imported')}" if prow
-              else " · no résumé imported")
+    resume = (f' · <a href="/profile">résumé: {esc(prow["headline"] or "imported")}</a>'
+              if prow else ' · <a href="/profile">no résumé imported</a>')
     manifest = f"""
 <div class="manifest">
   <div>
@@ -628,6 +666,65 @@ def page_stats(_: dict[str, list[str]]) -> str:
     return page("Stats", "/stats", body)
 
 
+UPLOAD_FORM = """
+<form class="logform" method="post" action="/import" enctype="multipart/form-data">
+  <label class="full">LinkedIn data export (.zip)
+    <input type="file" name="resume" accept=".zip,application/zip" required>
+  </label>
+  <div class="full"><button class="primary">Import résumé</button></div>
+</form>
+<p class="hint">Get the ZIP from LinkedIn: <em>Settings &amp; Privacy → Data
+Privacy → Get a copy of your data</em>, tick the larger archive (it holds
+Profile, Positions, Skills), and download it. Then pick that file above —
+nothing is sent to LinkedIn; the file is read locally and stored in
+state.db.</p>"""
+
+
+def page_profile(params: dict[str, list[str]]) -> str:
+    conn = db()
+    row = conn.execute(
+        "SELECT text, headline, skills_json, imported_at "
+        "FROM profile WHERE id = 1").fetchone()
+    conn.close()
+
+    banner = ""
+    if params.get("ok"):
+        banner = '<p class="banner">Résumé imported — the queue re-ranks on the next build.</p>'
+    elif params.get("err"):
+        banner = f'<p class="banner err">Import failed: {esc(params["err"][0])}</p>'
+
+    if not row:
+        head = """
+<div class="manifest">
+  <div>
+    <div class="eyebrow">Résumé</div>
+    <h1>No résumé imported</h1>
+  </div>
+</div>
+<p class="hint">Import your LinkedIn export to re-rank the daily queue by real
+fit against your experience and personalize connection notes.</p>"""
+        return page("Résumé", "/profile", head + banner + UPLOAD_FORM)
+
+    text, headline, skills_json, imported_at = row
+    skills = json.loads(skills_json) if skills_json else []
+    chips = "".join(f'<span class="score">{esc(s)}</span>' for s in skills)
+    head = f"""
+<div class="manifest">
+  <div>
+    <div class="eyebrow">Résumé · imported {esc(imported_at)}</div>
+    <h1>{esc(headline or "Profile")}</h1>
+  </div>
+</div>"""
+    body = (head + banner
+            + f'<section class="stage"><h2>skills ({len(skills)})</h2></section>'
+            + (f'<div class="chips">{chips}</div>' if chips else '')
+            + '<section class="stage"><h2>profile text · fed to the re-rank</h2></section>'
+            + f'<pre class="profiletext">{esc(text)}</pre>'
+            + '<section class="stage"><h2>re-import</h2></section>'
+            + UPLOAD_FORM)
+    return page("Résumé", "/profile", body)
+
+
 GET_ROUTES = {
     "/": page_queue,
     "/board": page_board,
@@ -635,6 +732,7 @@ GET_ROUTES = {
     "/log": page_log,
     "/company": page_company,
     "/stats": page_stats,
+    "/profile": page_profile,
 }
 
 
@@ -678,8 +776,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.FORBIDDEN, "cross-origin POST rejected")
             return
         length = int(self.headers.get("Content-Length") or 0)
-        form = urllib.parse.parse_qs(self.rfile.read(length).decode())
+        raw = self.rfile.read(length)
         path = self.path.partition("?")[0]
+        if path == "/import":  # multipart file upload — keep the raw bytes
+            self.post_import(raw, self.headers.get("Content-Type", ""))
+            return
+        form = urllib.parse.parse_qs(raw.decode())
         if path == "/build":
             self.post_build(form)
         elif path == "/toggle":
@@ -703,6 +805,21 @@ class Handler(BaseHTTPRequestHandler):
                 threading.Thread(target=build_worker,
                                  args=("notes" in form,), daemon=True).start()
         self.redirect("/")
+
+    def post_import(self, raw: bytes, content_type: str) -> None:
+        data = parse_multipart(content_type, raw).get("resume")
+        if not data:
+            self.redirect("/profile?err=" + urllib.parse.quote("no file selected"))
+            return
+        try:
+            profile.ingest(io.BytesIO(data))
+        except zipfile.BadZipFile:
+            self.redirect("/profile?err=" + urllib.parse.quote("not a ZIP archive"))
+            return
+        except profile.ProfileError as e:
+            self.redirect("/profile?err=" + urllib.parse.quote(str(e)[:140]))
+            return
+        self.redirect("/profile?ok=1")
 
     def post_toggle(self, form: dict[str, list[str]]) -> None:
         date = form.get("date", [""])[0]
