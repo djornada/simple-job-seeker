@@ -25,6 +25,7 @@ import datetime as dt
 import html
 import io
 import json
+import os
 import re
 import sqlite3
 import threading
@@ -296,7 +297,7 @@ def page(title: str, active: str, body: str, refresh: bool = False) -> str:
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 {meta}<title>{esc(title)} · simple-job-seeker</title>
 <style>{CSS}</style>
 </head><body>
@@ -725,6 +726,15 @@ fit against your experience and personalize connection notes.</p>"""
     return page("Résumé", "/profile", body)
 
 
+# favicon lives next to this file; loaded once, served as static bytes
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "favicon.ico"), "rb") as _f:
+        FAVICON = _f.read()
+except OSError:
+    FAVICON = b""
+
+
 GET_ROUTES = {
     "/": page_queue,
     "/board": page_board,
@@ -751,6 +761,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def send_bytes(self, data: bytes, content_type: str) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
+
     def redirect(self, location: str) -> None:
         self.send_response(HTTPStatus.SEE_OTHER)
         self.send_header("Location", location)
@@ -765,6 +783,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path, _, query = self.path.partition("?")
+        if path == "/favicon.ico":
+            if FAVICON:
+                self.send_bytes(FAVICON, "image/x-icon")
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
+            return
         fn = GET_ROUTES.get(path)
         if fn is None:
             self.send_error(HTTPStatus.NOT_FOUND)
