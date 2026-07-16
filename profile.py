@@ -26,20 +26,12 @@ import zipfile
 
 import queue_agent as qa
 
-PROFILE_CHARS = 1500     # compact profile text budget for the LLM re-rank
-
-
-# --------------------------------------------------------------------------- #
-# ZIP / CSV reading (export layouts vary — match by basename & header name)
-# --------------------------------------------------------------------------- #
-
 def _find_member(zf: zipfile.ZipFile, basename: str) -> str | None:
     want = basename.lower()
     for name in zf.namelist():
         if name.rsplit("/", 1)[-1].lower() == want:
             return name
     return None
-
 
 def _read_csv(zf: zipfile.ZipFile, basename: str) -> list[dict]:
     name = _find_member(zf, basename)
@@ -48,7 +40,6 @@ def _read_csv(zf: zipfile.ZipFile, basename: str) -> list[dict]:
     with zf.open(name) as f:
         text = io.TextIOWrapper(f, encoding="utf-8", errors="replace")
         return list(csv.DictReader(text))
-
 
 def _field(row: dict, *names: str) -> str:
     """Case-insensitive header lookup; returns the first non-empty match."""
@@ -59,13 +50,12 @@ def _field(row: dict, *names: str) -> str:
             return v
     return ""
 
-
-# --------------------------------------------------------------------------- #
-# Profile assembly
-# --------------------------------------------------------------------------- #
-
 def build_profile(zf: zipfile.ZipFile) -> tuple[str, str, list[str]]:
-    """Return (compact_text, headline, skills)."""
+    """Return (profile_text, headline, skills).
+
+    The experience is parsed in full — every position, full descriptions —
+    so the model gets real context for the re-rank and for drafting notes.
+    """
     profile_rows = _read_csv(zf, "Profile.csv")
     positions = _read_csv(zf, "Positions.csv")
     skills_rows = _read_csv(zf, "Skills.csv")
@@ -85,7 +75,7 @@ def build_profile(zf: zipfile.ZipFile) -> tuple[str, str, list[str]]:
         parts.append(f"Summary: {summary}")
     if positions:
         parts.append("Experience:")
-        for r in positions[:6]:  # most-recent-first in the export
+        for r in positions:
             title = _field(r, "Title")
             company = _field(r, "Company Name")
             started = _field(r, "Started On")
@@ -94,21 +84,16 @@ def build_profile(zf: zipfile.ZipFile) -> tuple[str, str, list[str]]:
             when = f" ({started}–{finished})" if started else ""
             line = f"- {title} @ {company}{when}".rstrip()
             if desc:
-                line += f": {desc[:280]}"
+                line += f": {desc}"
             parts.append(line)
     if skills:
-        parts.append("Skills: " + ", ".join(skills[:30]))
+        parts.append("Skills: " + ", ".join(skills))
 
-    return "\n".join(parts)[:PROFILE_CHARS], headline, skills
+    return "\n".join(parts), headline, skills
 
-
-# --------------------------------------------------------------------------- #
-# Ingestion (shared by the CLI below and webapp.py)
-# --------------------------------------------------------------------------- #
 
 class ProfileError(ValueError):
     """The ZIP opened but held no usable Profile/Positions/Skills data."""
-
 
 def ingest(source) -> tuple[str, str, list[str]]:
     """Build the profile from a ZIP and store it in state.db.
@@ -135,11 +120,6 @@ def ingest(source) -> tuple[str, str, list[str]]:
     conn.close()
     return text, headline, skills
 
-
-# --------------------------------------------------------------------------- #
-# Commands
-# --------------------------------------------------------------------------- #
-
 def cmd_import(args: argparse.Namespace) -> int:
     path = os.path.expanduser(args.zip)
     try:
@@ -156,7 +136,6 @@ def cmd_import(args: argparse.Namespace) -> int:
     print(f"[ok] imported profile — {len(text)} chars, {len(skills)} skills"
           f"{f', headline: {headline}' if headline else ''}")
     return 0
-
 
 def cmd_show(_: argparse.Namespace) -> int:
     conn = qa.db_connect()
@@ -178,7 +157,6 @@ def cmd_show(_: argparse.Namespace) -> int:
     print("\n--- profile text ---\n")
     print(text)
     return 0
-
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Import your LinkedIn resume export.")

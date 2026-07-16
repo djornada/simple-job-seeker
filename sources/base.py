@@ -1,11 +1,3 @@
-"""
-Shared plumbing for job-source providers.
-
-Everything a provider needs that isn't provider-specific lives here: the
-`Job` model, the HTTP fetch, and HTML flattening. Providers import from this
-module (never from `queue_agent`) to keep the dependency graph acyclic.
-"""
-
 from __future__ import annotations
 
 import re
@@ -41,8 +33,6 @@ def _get(url: str, timeout: int = 20) -> bytes:
 
 
 class _TextExtractor(HTMLParser):
-    """Collect visible text; drop tags (convert_charrefs handles entities)."""
-
     def __init__(self) -> None:
         super().__init__()
         self.parts: list[str] = []
@@ -52,7 +42,6 @@ class _TextExtractor(HTMLParser):
 
 
 def strip_html(raw: str, limit: int = 2000) -> str:
-    """Flatten an HTML job description to plain text, trimmed to `limit`."""
     if not raw:
         return ""
     parser = _TextExtractor()

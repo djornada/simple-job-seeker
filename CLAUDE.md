@@ -23,12 +23,12 @@ links; the click is human. This protects the account against bans.
   against the resume (one Ollama call per job → score + one-line fit note);
   with no profile or Ollama down it stays keyword-only. Optional `--notes`
   drafts sub-200-char connection notes via a local Ollama model, seeded with
-  the imported headline + skills when present.
+  the imported profile (headline, skills, and full experience) when present.
 - profile.py — resume ingestion (`import <export.zip>` / `show` CLI, plus a
   reusable `ingest(source)` that takes a path or file-like object). Reads a
   LinkedIn data-export ZIP from local disk (nothing touches LinkedIn),
-  builds a compact profile text, and stores it in the `profile` table of
-  state.db. Feeds the re-rank stage and connection notes.
+  builds a full profile text (every position, untruncated), and stores it in
+  the `profile` table of state.db. Feeds the re-rank stage and connection notes.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
   state.db. Company names resolve by prefix when unambiguous.
 - webapp.py — local web UI over the same pipeline + state.db (pure stdlib

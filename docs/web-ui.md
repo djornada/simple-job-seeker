@@ -125,8 +125,9 @@ Import and review your LinkedIn profile.
 - **Upload** the LinkedIn data-export `.zip` and it's parsed locally (nothing
   is sent to LinkedIn) and stored in `state.db`. A success or error banner
   confirms the result.
-- **After import:** your headline, skills, import date, and the exact compact
-  profile text that feeds the re-rank — plus a re-import form to refresh it.
+- **After import:** your headline, skills, import date, and the exact profile
+  text that feeds the re-rank and note drafting — plus a re-import form to
+  refresh it.
 
 Full details, including how the import feeds ranking and notes:
 [Résumé matching](resume-matching.md).

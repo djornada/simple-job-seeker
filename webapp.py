@@ -38,10 +38,6 @@ import profile
 import queue_agent as qa
 import tracker
 
-# --------------------------------------------------------------------------- #
-# Shared state (background workers keep requests snappy)
-# --------------------------------------------------------------------------- #
-
 BUILD = {"running": False, "error": ""}
 BUILD_LOCK = threading.Lock()
 NOTES_PENDING: set[str] = set()          # queue item uids with a note in flight
@@ -49,16 +45,13 @@ NOTES_LOCK = threading.Lock()
 
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
-
 def db() -> sqlite3.Connection:
     conn = sqlite3.connect(qa.DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-
 def esc(text: object) -> str:
     return html.escape(str(text), quote=True)
-
 
 def parse_multipart(content_type: str, body: bytes) -> dict[str, bytes]:
     """Minimal multipart/form-data parser (stdlib dropped `cgi` in 3.13).
@@ -86,11 +79,6 @@ def parse_multipart(content_type: str, body: bytes) -> dict[str, bytes]:
         if name:
             fields[name.group(1)] = content
     return fields
-
-
-# --------------------------------------------------------------------------- #
-# Background workers
-# --------------------------------------------------------------------------- #
 
 def build_worker(with_notes: bool) -> None:
     try:
@@ -148,10 +136,6 @@ def note_worker(date: str, uid: str) -> None:
         with NOTES_LOCK:
             NOTES_PENDING.discard(uid)
 
-
-# --------------------------------------------------------------------------- #
-# Page shell
-# --------------------------------------------------------------------------- #
 
 CSS = """
 :root {
@@ -902,7 +886,6 @@ class Handler(BaseHTTPRequestHandler):
             conn.close()
         self.redirect("/due")
 
-
 def main() -> int:
     cfg = qa.load_config()
     web = cfg.get("web", {})
@@ -920,7 +903,6 @@ def main() -> int:
     finally:
         server.server_close()
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

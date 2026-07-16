@@ -1,11 +1,8 @@
-"""We Work Remotely — public RSS feeds. No LinkedIn automation."""
-
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
 from .base import Job, _get, strip_html
-
 
 def fetch(cfg: dict) -> list[Job]:
     feeds = cfg["sources"].get("wwr_feeds", [])
@@ -19,7 +16,6 @@ def fetch(cfg: dict) -> list[Job]:
             if title_el is None or link_el is None:
                 continue
             raw = title_el.text or ""
-            # WWR titles look like "Company: Job Title"
             company, _, title = raw.partition(":")
             if not title:
                 title, company = raw, ""

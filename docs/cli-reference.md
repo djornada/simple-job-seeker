@@ -92,7 +92,7 @@ python profile.py show
 
 | Command | What it does |
 | --- | --- |
-| `import <export.zip>` | Read a LinkedIn data-export ZIP from local disk, build a compact profile, and store it in `state.db`. |
+| `import <export.zip>` | Read a LinkedIn data-export ZIP from local disk, build a full profile (every position, untruncated), and store it in `state.db`. |
 | `show` | Print the stored profile — headline, skills, positions, import date. |
 
 ```bash

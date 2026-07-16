@@ -33,10 +33,11 @@ python profile.py show     # review what was stored
 
 The importer opens the ZIP and locates `Profile.csv`, `Positions.csv`, and
 `Skills.csv` by name (export layouts vary, so it matches case-insensitively
-and defensively by column header). From them it builds a **compact ~1,500
-character profile**: your headline, summary, recent positions (title @ company
-+ a trimmed description), and skills list. That compact text — not the raw
-files — is what the model sees.
+and defensively by column header). From them it builds a **full profile**:
+your headline, summary, **every** position (title @ company, dates, and the
+complete description — untruncated), and your full skills list. That assembled
+text — not the raw files — is what the model sees, both for the re-rank and
+for drafting connection notes.
 
 It's stored in the `profile` table of `state.db` (a single row), which is
 gitignored like the rest of your data.
@@ -61,7 +62,8 @@ saved markdown.
 ### 2. Connection notes get personal
 
 The draft-note prompt swaps its generic "senior engineer" description for your
-real headline and top skills, so notes are grounded in your actual background.
+real headline, skills, and full experience, so notes are grounded in your
+actual background — the model can reference a role or project that fits.
 
 ### 3. Stats gain a fit-score breakdown
 

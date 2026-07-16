@@ -1,12 +1,9 @@
-"""Remotive — public JSON API, no auth. No LinkedIn automation."""
-
 from __future__ import annotations
 
 import json
 import urllib.parse
 
 from .base import Job, _get, strip_html
-
 
 def fetch(cfg: dict) -> list[Job]:
     search_terms = cfg["sources"].get("remotive_searches", ["react"])

@@ -1,11 +1,8 @@
-"""RemoteOK — public JSON API, no auth. No LinkedIn automation."""
-
 from __future__ import annotations
 
 import json
 
 from .base import Job, _get, strip_html
-
 
 def fetch(cfg: dict) -> list[Job]:
     data = json.loads(_get("https://remoteok.com/api"))

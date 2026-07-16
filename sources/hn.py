@@ -1,17 +1,9 @@
-"""
-Hacker News 'Who is hiring?' via the public Algolia API (no auth).
-
-Nothing here touches LinkedIn; HN comments are public. We build a link to
-the comment — the click is human, same as every other source.
-"""
-
 from __future__ import annotations
 
 import json
 import urllib.parse
 
 from .base import Job, _get, strip_html
-
 
 def fetch(cfg: dict) -> list[Job]:
     q = urllib.parse.quote('"who is hiring"')

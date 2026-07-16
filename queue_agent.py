@@ -28,8 +28,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# Job sources live in the sources/ package; Job + collect_jobs are re-exported
-# here so webapp.py and profile.py keep using `qa.Job` / `qa.collect_jobs`.
 from sources import Job, collect_jobs  # noqa: F401
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,23 +35,13 @@ CONFIG_PATH = BASE_DIR / "config.toml"
 DB_PATH = BASE_DIR / "state.db"
 OUT_DIR = BASE_DIR / "queues"
 
-
-# --------------------------------------------------------------------------- #
-# Config
-# --------------------------------------------------------------------------- #
-
 def load_config() -> dict:
     with open(CONFIG_PATH, "rb") as f:
         return tomllib.load(f)
 
 
-# --------------------------------------------------------------------------- #
-# Filtering & scoring
-# --------------------------------------------------------------------------- #
-
 def _norm(text: str) -> str:
     return re.sub(r"[^a-z0-9+#. ]", " ", text.lower())
-
 
 def score_job(job: Job, cfg: dict) -> float:
     """Score by keyword matches; return 0 to reject."""
@@ -86,10 +74,6 @@ def score_job(job: Job, cfg: dict) -> float:
         return 0.0
     return score
 
-
-# --------------------------------------------------------------------------- #
-# State (SQLite)
-# --------------------------------------------------------------------------- #
 
 def db_connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -127,7 +111,6 @@ def db_connect() -> sqlite3.Connection:
             imported_at TEXT
         );
     """)
-    # resume-in-the-loop columns on pre-existing DBs (fresh DBs get them above)
     for col in ("description TEXT", "fit_note TEXT", "llm_score REAL"):
         try:
             conn.execute(f"ALTER TABLE queue_items ADD COLUMN {col}")
@@ -188,19 +171,13 @@ def save_queue(conn: sqlite3.Connection, queue: list[Job],
     conn.commit()
 
 
-# --------------------------------------------------------------------------- #
-# LinkedIn search links (built for YOU to click; nothing is fetched)
-# --------------------------------------------------------------------------- #
-
 def linkedin_people_search(keywords: str) -> str:
     q = urllib.parse.quote(keywords)
     return f"https://www.linkedin.com/search/results/people/?keywords={q}"
 
-
 def google_xray(company: str, role: str) -> str:
     q = urllib.parse.quote(f'site:linkedin.com/in "{role}" "{company}"')
     return f"https://www.google.com/search?q={q}"
-
 
 def build_links(job: Job, cfg: dict) -> dict[str, str]:
     roles = cfg["targets"].get("people_roles", ["Technical Recruiter", "Engineering Manager"])
@@ -210,11 +187,6 @@ def build_links(job: Job, cfg: dict) -> dict[str, str]:
     links["Google x-ray"] = google_xray(job.company, roles[0])
     return links
 
-
-# --------------------------------------------------------------------------- #
-# Imported resume profile (populated by profile.py; optional)
-# --------------------------------------------------------------------------- #
-
 def load_profile_text(conn: sqlite3.Connection) -> str | None:
     """Compact resume text for the LLM re-rank, or None if never imported."""
     try:
@@ -222,7 +194,6 @@ def load_profile_text(conn: sqlite3.Connection) -> str | None:
     except sqlite3.OperationalError:
         return None
     return row[0] if row else None
-
 
 def load_profile_bits(conn: sqlite3.Connection) -> tuple[str, list[str]] | None:
     """Headline + skills for note personalization, or None if never imported."""
@@ -236,14 +207,9 @@ def load_profile_bits(conn: sqlite3.Connection) -> tuple[str, list[str]] | None:
     return (row[0] or ""), (json.loads(row[1]) if row[1] else [])
 
 
-# --------------------------------------------------------------------------- #
-# Local model (Ollama) — connection notes and resume re-rank
-# --------------------------------------------------------------------------- #
-
 def _strip_think(text: str) -> str:
     """qwen3 leaks <think>…</think> even with think disabled; drop it."""
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-
 
 def _ollama_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
                      options: dict | None = None, timeout: int = 300) -> str | None:
@@ -274,6 +240,7 @@ def _ollama_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
 def draft_note(job: Job, cfg: dict) -> str | None:
     conn = db_connect()
     bits = load_profile_bits(conn)
+    profile_text = load_profile_text(conn)
     conn.close()
     if bits and bits[0]:
         headline, skills = bits
@@ -283,12 +250,15 @@ def draft_note(job: Job, cfg: dict) -> str | None:
     else:
         sender = ("a senior software engineer / tech lead "
                   "(React, TypeScript, Node.js)")
+    # full imported experience gives the model something concrete to reference
+    background = f"\n\nSENDER BACKGROUND:\n{profile_text}" if profile_text else ""
     prompt = (
         "Write a LinkedIn connection note under 200 characters, in English. "
         f"From: {sender} reaching out about a role. Friendly, direct, no "
         "agency-speak, no emojis, no 'I hope this finds you well'. Mention the "
-        "company naturally.\n\n"
-        f"Company: {job.company}\nRole: {job.title}\n\n"
+        "company naturally, and draw on the sender's background where it's "
+        "relevant to the role (still under 200 characters).\n\n"
+        f"Company: {job.company}\nRole: {job.title}{background}\n\n"
         "Reply with the note text only."
     )
     raw = _ollama_generate(cfg, prompt, options={"temperature": 0.7})
@@ -351,11 +321,6 @@ def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Jo
     scored.sort(key=lambda j: (j.llm_score or 0, j.score), reverse=True)
     return scored + tail
 
-
-# --------------------------------------------------------------------------- #
-# Output
-# --------------------------------------------------------------------------- #
-
 def render(queue: list[Job], links: dict[str, dict[str, str]],
            notes: dict[str, str]) -> str:
     today = dt.date.today().isoformat()
@@ -393,11 +358,6 @@ def show_stats(conn: sqlite3.Connection) -> None:
     ):
         print(f"  {n:>2}x  {name}")
 
-
-# --------------------------------------------------------------------------- #
-# Pipeline (shared by the CLI below and webapp.py; fetching lives in sources/)
-# --------------------------------------------------------------------------- #
-
 def select_queue(conn: sqlite3.Connection, jobs: list[Job], cfg: dict,
                  limit: int, cooldown: int) -> list[Job]:
     """Score, filter, dedupe (one job per company) and cap the queue."""
@@ -420,11 +380,6 @@ def select_queue(conn: sqlite3.Connection, jobs: list[Job], cfg: dict,
             break
     return queue
 
-
-# --------------------------------------------------------------------------- #
-# Main
-# --------------------------------------------------------------------------- #
-
 def main() -> int:
     ap = argparse.ArgumentParser(description="Build today's LinkedIn target queue.")
     ap.add_argument("--notes", action="store_true", help="draft connection notes via Ollama")
@@ -443,8 +398,6 @@ def main() -> int:
     limit = args.n or cfg["targets"].get("per_day", 10)
     cooldown = cfg["targets"].get("company_cooldown_days", 30)
 
-    # With a resume imported, gate a wider shortlist so the LLM has room to
-    # re-rank; without one, behave exactly as before.
     profile_text = load_profile_text(conn)
     pool = max(limit, cfg.get("resume", {}).get("shortlist", 30)) if profile_text else limit
     candidates = select_queue(conn, collect_jobs(cfg), cfg, pool, cooldown)
@@ -475,7 +428,6 @@ def main() -> int:
         print(f"\n[saved] {out_file}", file=sys.stderr)
 
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

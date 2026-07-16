@@ -5,7 +5,7 @@ This package is the facade over the individual boards. Add a provider by
 dropping a module with a `fetch(cfg)` here and registering it in `REGISTRY`;
 enable it in `config.toml` under `[sources] enabled`.
 
-Every source is a public endpoint or feed. Nothing touches LinkedIn.
+Every source is a public endpoint or feed
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ __all__ = ["Job", "strip_html", "REGISTRY", "collect_jobs"]
 
 
 def collect_jobs(cfg: dict) -> list[Job]:
-    """Fetch every enabled source; a dead board logs a warning, not a crash."""
     all_jobs: list[Job] = []
     for name in cfg["sources"].get("enabled", ["remoteok", "remotive"]):
         fetcher = REGISTRY.get(name)

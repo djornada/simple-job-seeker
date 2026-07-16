@@ -85,7 +85,7 @@ use, so any tool can run first.
 | `seen_jobs` | Every job uid ever seen, to avoid re-queuing. |
 | `queued_companies` | Per company: when last queued and how many times (drives the cooldown). |
 | `queue_items` | The persisted daily queues — one row per (date, target) — including score, drafted note, done flag, description, and the LLM fit note/score. |
-| `profile` | The single imported résumé row: compact text, headline, skills, import date. |
+| `profile` | The single imported résumé row: full profile text, headline, skills, import date. |
 | `outreach` | The touchpoint log: company, person, action, note, date, follow-up date + done flag. |
 
 Schema changes to `queue_items` use guarded `ALTER TABLE` migrations, so an
