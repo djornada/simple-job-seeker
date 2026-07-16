@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -32,10 +33,29 @@ from sources import Job, collect_jobs  # noqa: F401
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.toml"
+ENV_PATH = BASE_DIR / ".env"
 DB_PATH = BASE_DIR / "state.db"
 OUT_DIR = BASE_DIR / "queues"
 
+
+def _load_dotenv() -> None:
+    """Populate os.environ from a local .env (KEY=value per line), if present.
+    Real environment variables win — .env only fills what isn't already set."""
+    if not ENV_PATH.exists():
+        return
+    for line in ENV_PATH.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def load_config() -> dict:
+    _load_dotenv()
     with open(CONFIG_PATH, "rb") as f:
         return tomllib.load(f)
 
@@ -211,6 +231,22 @@ def _strip_think(text: str) -> str:
     """qwen3 leaks <think>…</think> even with think disabled; drop it."""
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
+def _llm_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
+                  options: dict | None = None, timeout: int = 300) -> str | None:
+    """One completion from the configured provider.
+
+    `[llm].provider` selects the backend: "ollama" (default, local) or
+    "openai" for any OpenAI-compatible chat endpoint (e.g. NVIDIA NIM).
+    Returns raw response text, or None if the backend is unreachable.
+    """
+    provider = cfg.get("llm", {}).get("provider", "ollama").lower()
+    if provider in ("openai", "nvidia", "nim"):
+        return _openai_generate(cfg, prompt, fmt=fmt, options=options,
+                                timeout=timeout)
+    return _ollama_generate(cfg, prompt, fmt=fmt, options=options,
+                            timeout=timeout)
+
+
 def _ollama_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
                      options: dict | None = None, timeout: int = 300) -> str | None:
     """One /api/generate call. Returns raw response text, or None if unreachable."""
@@ -237,6 +273,43 @@ def _ollama_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
         return None
 
 
+def _openai_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
+                     options: dict | None = None, timeout: int = 300) -> str | None:
+    """One /chat/completions call against an OpenAI-compatible endpoint
+    (e.g. NVIDIA NIM). The API key is read from the env var named in
+    `[openai].api_key_env` so no secret is committed. Returns the message
+    content, or None if the endpoint is unreachable."""
+    o = cfg.get("openai", {})
+    api_key = os.environ.get(o.get("api_key_env", "OPENAI_API_KEY"), "")
+    payload: dict = {
+        "model": o.get("model", "z-ai/glm-5.2"),
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+    }
+    if options and "temperature" in options:
+        payload["temperature"] = options["temperature"]
+    if fmt == "json":  # OpenAI/NIM ask for JSON via response_format
+        payload["response_format"] = {"type": "json_object"}
+    base = o.get("base_url", "https://integrate.api.nvidia.com/v1").rstrip("/")
+    req = urllib.request.Request(
+        base + "/chat/completions",
+        data=json.dumps(payload).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+    except OSError:
+        return None
+    try:
+        return data["choices"][0]["message"]["content"] or ""
+    except (KeyError, IndexError, TypeError):
+        return ""
+
+
 def draft_note(job: Job, cfg: dict) -> str | None:
     conn = db_connect()
     bits = load_profile_bits(conn)
@@ -261,7 +334,7 @@ def draft_note(job: Job, cfg: dict) -> str | None:
         f"Company: {job.company}\nRole: {job.title}{background}\n\n"
         "Reply with the note text only."
     )
-    raw = _ollama_generate(cfg, prompt, options={"temperature": 0.7})
+    raw = _llm_generate(cfg, prompt, options={"temperature": 0.7})
     if raw is None:
         return None
     note = _strip_think(raw).strip().strip('"')
@@ -279,7 +352,7 @@ def _llm_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
         f"JOB\nTitle: {job.title}\nCompany: {job.company}\n"
         f"Description: {job.description}\n"
     )
-    raw = _ollama_generate(cfg, prompt, fmt="json")
+    raw = _llm_generate(cfg, prompt, fmt="json")
     if raw is None:
         return None
     try:

@@ -7,3 +7,5 @@ __pycache__/
 .serena/
 # LinkedIn data-export archives — never commit your resume dump
 *.zip
+# secrets — API keys live here, never in config.toml
+.env

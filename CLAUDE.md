@@ -20,10 +20,14 @@ links; the click is human. This protects the account against bans.
   filters by location, dedups in SQLite, outputs markdown to `queues/`.
   When a profile is imported, an LLM re-rank stage
   (`rerank_with_resume`) re-scores the keyword-gated shortlist by real fit
-  against the resume (one Ollama call per job → score + one-line fit note);
-  with no profile or Ollama down it stays keyword-only. Optional `--notes`
-  drafts sub-200-char connection notes via a local Ollama model, seeded with
+  against the resume (one LLM call per job → score + one-line fit note);
+  with no profile or the backend down it stays keyword-only. Optional
+  `--notes` drafts sub-200-char connection notes via the LLM, seeded with
   the imported profile (headline, skills, and full experience) when present.
+  The LLM backend is pluggable via `[llm].provider`: "ollama" (local,
+  default) or "openai" (any OpenAI-compatible chat endpoint, e.g. NVIDIA
+  NIM). `_llm_generate` dispatches; both backends return None when
+  unreachable so the fallback is uniform.
 - profile.py — resume ingestion (`import <export.zip>` / `show` CLI, plus a
   reusable `ingest(source)` that takes a path or file-like object). Reads a
   LinkedIn data-export ZIP from local disk (nothing touches LinkedIn),
@@ -40,8 +44,8 @@ links; the click is human. This protects the account against bans.
   file is read locally, nothing is sent to LinkedIn). Builds run in a
   background thread; queue items persist in the queue_items table. Generates
   links only; the click is still human.
-- config.toml — all configuration (sources, filters, targets, resume,
-  ollama).
+- config.toml — all configuration (sources, filters, targets, resume, llm
+  provider, ollama, openai).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

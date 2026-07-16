@@ -46,6 +46,21 @@ min_llm_score = 5    # drop jobs the model scores below this (0 disables)
 host = "127.0.0.1"   # keep it local: state.db holds data about real people
 port = 3000
 
+[llm]
+# Which backend drives the re-rank and connection-note stages.
+#   "ollama" — local model (default, private, no API key)
+#   "openai" — any OpenAI-compatible chat endpoint (e.g. NVIDIA NIM)
+provider = "openai"
+
 [ollama]
 url = "http://localhost:11434"
 model = "qwen3.5"
+
+# OpenAI-compatible endpoint, used when [llm].provider = "openai".
+# The API key is read from the named environment variable, never committed.
+# Set it via a local .env file (gitignored) — NVIDIA_API_KEY="nvapi-..." —
+# or export it in your shell.
+[openai]
+base_url = "https://integrate.api.nvidia.com/v1"
+api_key_env = "NVIDIA_API_KEY"
+model = "z-ai/glm-5.2"
