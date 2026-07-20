@@ -24,40 +24,13 @@ import os
 import re
 import sqlite3
 import sys
-import tomllib
+import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
+from db import db_connect, is_new  # noqa: F401 — re-exported as qa.*
 from sources import Job, collect_jobs  # noqa: F401
-
-BASE_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = BASE_DIR / "config.toml"
-ENV_PATH = BASE_DIR / ".env"
-DB_PATH = BASE_DIR / "state.db"
-OUT_DIR = BASE_DIR / "queues"
-
-
-def _load_dotenv() -> None:
-    """Populate os.environ from a local .env (KEY=value per line), if present.
-    Real environment variables win — .env only fills what isn't already set."""
-    if not ENV_PATH.exists():
-        return
-    for line in ENV_PATH.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
-
-
-def load_config() -> dict:
-    _load_dotenv()
-    with open(CONFIG_PATH, "rb") as f:
-        return tomllib.load(f)
+from utils import DB_PATH, OUT_DIR, load_config  # noqa: F401 — re-exported as qa.*
 
 
 def _norm(text: str) -> str:
@@ -93,66 +66,6 @@ def score_job(job: Job, cfg: dict) -> float:
     if not matched_role:
         return 0.0
     return score
-
-
-def db_connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS seen_jobs (
-            uid TEXT PRIMARY KEY,
-            first_seen TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS queued_companies (
-            company TEXT PRIMARY KEY,
-            last_queued TEXT NOT NULL,
-            times_queued INTEGER NOT NULL DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS queue_items (
-            date TEXT NOT NULL,
-            uid TEXT NOT NULL,
-            source TEXT NOT NULL,
-            company TEXT NOT NULL,
-            title TEXT NOT NULL,
-            url TEXT NOT NULL,
-            location TEXT NOT NULL DEFAULT '',
-            score REAL NOT NULL DEFAULT 0,
-            note TEXT,
-            done INTEGER NOT NULL DEFAULT 0,
-            description TEXT,
-            fit_note TEXT,
-            llm_score REAL,
-            PRIMARY KEY (date, uid)
-        );
-        CREATE TABLE IF NOT EXISTS profile (
-            id          INTEGER PRIMARY KEY CHECK (id = 1),
-            text        TEXT NOT NULL,
-            headline    TEXT,
-            skills_json TEXT,
-            imported_at TEXT
-        );
-    """)
-    for col in ("description TEXT", "fit_note TEXT", "llm_score REAL"):
-        try:
-            conn.execute(f"ALTER TABLE queue_items ADD COLUMN {col}")
-        except sqlite3.OperationalError:
-            pass  # column already exists
-    return conn
-
-
-def is_new(conn: sqlite3.Connection, job: Job, cooldown_days: int) -> bool:
-    cur = conn.execute("SELECT 1 FROM seen_jobs WHERE uid = ?", (job.uid,))
-    if cur.fetchone():
-        return False
-    cur = conn.execute(
-        "SELECT last_queued FROM queued_companies WHERE company = ?",
-        (job.company.lower(),),
-    )
-    row = cur.fetchone()
-    if row:
-        last = dt.date.fromisoformat(row[0])
-        if (dt.date.today() - last).days < cooldown_days:
-            return False
-    return True
 
 
 def mark_queued(conn: sqlite3.Connection, job: Job) -> None:
@@ -302,6 +215,10 @@ def _openai_generate(cfg: dict, prompt: str, *, fmt: str | None = None,
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:  # 401 bad key, 429 rate limit, 5xx…
+        body = e.read().decode("utf-8", "replace")[:200]
+        print(f"[llm] {base} HTTP {e.code}: {body}", file=sys.stderr)
+        return None
     except OSError:
         return None
     try:

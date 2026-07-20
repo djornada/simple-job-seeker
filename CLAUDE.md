@@ -8,6 +8,15 @@ visits, no auto-connect. The script decides the targets and generates
 links; the click is human. This protects the account against bans.
 
 ## Architecture
+- utils/ — shared paths (`BASE_DIR`, `CONFIG_PATH`, `ENV_PATH`, `DB_PATH`,
+  `OUT_DIR`) and config loading (`load_config`, which also loads a local
+  `.env` via `_load_dotenv`). Single source of truth for on-disk locations,
+  imported by both the CLI and the web UI without pulling in the pipeline.
+- db/ — SQLite state layer: `db_connect` (owns the pipeline schema —
+  seen_jobs, queued_companies, queue_items, profile — plus lazy ALTERs) and
+  `is_new` (dedup + company cooldown). tracker.py keeps its own outreach
+  schema on the same state.db; both use CREATE TABLE IF NOT EXISTS.
+  queue_agent re-exports `db_connect`/`is_new` so `qa.*` keeps working.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
   the shared `Job` model, `_get`, and `strip_html`; `sources/__init__.py` is

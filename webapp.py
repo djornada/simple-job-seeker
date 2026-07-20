@@ -41,6 +41,7 @@ import tracker
 BUILD = {"running": False, "error": ""}
 BUILD_LOCK = threading.Lock()
 NOTES_PENDING: set[str] = set()          # queue item uids with a note in flight
+NOTES_FAILED: set[str] = set()           # uids whose last draft attempt failed
 NOTES_LOCK = threading.Lock()
 
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -115,6 +116,7 @@ def build_worker(with_notes: bool) -> None:
 
 
 def note_worker(date: str, uid: str) -> None:
+    note = None
     try:
         cfg = qa.load_config()
         conn = db()
@@ -132,9 +134,14 @@ def note_worker(date: str, uid: str) -> None:
                     (note, date, uid))
                 conn.commit()
         conn.close()
+        failed = not note  # None = LLM unreachable/rate-limited (see server log)
+    except Exception:  # noqa: BLE001 — a crash still counts as a failed draft
+        failed = True
+        raise
     finally:
         with NOTES_LOCK:
             NOTES_PENDING.discard(uid)
+            (NOTES_FAILED.add if failed else NOTES_FAILED.discard)(uid)
 
 
 CSS = """
@@ -209,6 +216,7 @@ p.note { margin: 8px 0 0; font-size: 13.5px; background: var(--paper);
 p.note .len { font-family: var(--mono); font-size: 11px; color: var(--muted);
   margin-left: 6px; }
 p.note.pending { color: var(--muted); font-style: italic; }
+p.note.failed { color: var(--amber); background: var(--amber-bg); font-size: 12.5px; }
 p.fit { margin: 6px 0 0; font-size: 13px; color: var(--accent-ink);
   border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; }
 p.fit .llm { font-family: var(--mono); font-size: 11px; color: var(--muted);
@@ -338,6 +346,7 @@ def page_queue(params: dict[str, list[str]]) -> str:
         building, error = BUILD["running"], BUILD["error"]
     with NOTES_LOCK:
         pending = set(NOTES_PENDING)
+        failed = set(NOTES_FAILED)
 
     done_n = sum(r["done"] for r in rows)
     weekday = dt.date.fromisoformat(date).strftime("%A")
@@ -402,10 +411,16 @@ def page_queue(params: dict[str, list[str]]) -> str:
         elif r["uid"] in pending:
             note_html = '<p class="note pending">drafting note…</p>'
         else:
-            note_html = (f'<form method="post" action="/note" style="margin:8px 0 0">'
+            failed_html = (
+                '<p class="note failed">draft failed — LLM unreachable or '
+                'rate-limited (check the server log)</p>'
+                if r["uid"] in failed else "")
+            label = "Try again" if r["uid"] in failed else "Draft connection note"
+            note_html = (f'{failed_html}'
+                         f'<form method="post" action="/note" style="margin:8px 0 0">'
                          f'<input type="hidden" name="date" value="{esc(date)}">'
                          f'<input type="hidden" name="uid" value="{esc(r["uid"])}">'
-                         f'<button class="ghost">Draft connection note</button></form>')
+                         f'<button class="ghost">{label}</button></form>')
 
         done = bool(r["done"])
         items.append(f"""
@@ -847,6 +862,7 @@ class Handler(BaseHTTPRequestHandler):
             with NOTES_LOCK:
                 fresh = uid not in NOTES_PENDING
                 NOTES_PENDING.add(uid)
+                NOTES_FAILED.discard(uid)  # retry: clear the prior failure
             if fresh:
                 threading.Thread(target=note_worker, args=(date, uid),
                                  daemon=True).start()

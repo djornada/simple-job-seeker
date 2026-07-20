@@ -24,7 +24,6 @@ REGISTRY = {
 
 __all__ = ["Job", "strip_html", "REGISTRY", "collect_jobs"]
 
-
 def collect_jobs(cfg: dict) -> list[Job]:
     all_jobs: list[Job] = []
     for name in cfg["sources"].get("enabled", ["remoteok", "remotive"]):
