@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import datetime as dt
 
-import queue_agent as qa
+from pipeline import build_links
+from sources import Job
+from utils import load_config
 
 from ..layout import page
 from ..state import (
@@ -34,7 +36,7 @@ def page_queue(params: dict[str, list[str]]) -> str:
         "SELECT headline FROM profile WHERE id = 1").fetchone()
     conn.close()
 
-    cfg = qa.load_config()
+    cfg = load_config()
     with BUILD_LOCK:
         building, error = BUILD["running"], BUILD["error"]
     with NOTES_LOCK:
@@ -80,11 +82,11 @@ def page_queue(params: dict[str, list[str]]) -> str:
 
     items = []
     for r in rows:
-        job = qa.Job(source=r["source"], title=r["title"], company=r["company"],
-                     url=r["url"], location=r["location"])
+        job = Job(source=r["source"], title=r["title"], company=r["company"],
+                 url=r["url"], location=r["location"])
         linkrow = [f'<a href="{esc(r["url"])}" target="_blank" '
                    f'rel="noopener">job post</a>']
-        for label, url in qa.build_links(job, cfg).items():
+        for label, url in build_links(job, cfg).items():
             linkrow.append(f'<a href="{esc(url)}" target="_blank" '
                            f'rel="noopener">{esc(label)}</a>')
         meta_bits = [esc(r["title"])]

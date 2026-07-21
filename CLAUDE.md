@@ -20,19 +20,18 @@ links; the click is human. This protects the account against bans.
   state.db; `connect.py` (`connect`) is the schema-less Row-factory handle
   for request-serving code (the web server ensures schemas at startup). All
   schemas use CREATE TABLE IF NOT EXISTS, so creation order doesn't matter.
-  queue_agent re-exports the pipeline bits so `qa.*` keeps working.
+  Both queue_agent.py and webapp/ import straight from here.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
   the shared `Job` model, `_get`, and `strip_html`; `sources/__init__.py` is
   the facade (`REGISTRY` + `collect_jobs`, which drives enabled sources and
   turns a dead board into a warning, not a crash). Add a board by dropping a
-  module here and registering it. queue_agent re-exports `Job`/`collect_jobs`
-  so `qa.Job` / `qa.collect_jobs` keep working.
-- queue_agent.py — entrypoint + facade. Runs as `python queue_agent.py`
+  module here and registering it.
+- queue_agent.py — the CLI entrypoint. Runs as `python queue_agent.py`
   (kept a module, not a package, so cron/docs invocation is unchanged);
-  holds `main` (the CLI: collect → select → optional re-rank → render →
-  persist, plus the `queues/<date>.md` artifact) and re-exports the
-  pipeline/db/sources/utils surface so `qa.*` keeps working for the web UI.
+  holds `main` only (collect → select → optional re-rank → render →
+  persist, plus the `queues/<date>.md` artifact) and imports its pieces
+  directly from `pipeline`/`db`/`utils` — no facade to keep in sync.
 - pipeline/ — the stages between the boards and the daily queue, one concern
   per module: `scoring.py` (`score_job`: role keyword in title required,
   stack keywords add points, exclude/non-Brazil-friendly reject);
@@ -41,7 +40,10 @@ links; the click is human. This protects the account against bans.
   `rerank_with_resume` re-scores the keyword-gated shortlist by real fit,
   `draft_note` writes sub-200-char connection notes, profile readers
   included; with no profile or the backend down the pipeline stays
-  keyword-only and notes return None); `links.py` (`build_links`: LinkedIn
+  keyword-only and notes return None); `build.py` (`build_queue`: the
+  shared use case — collect → select → optional re-rank — consumed
+  directly by both queue_agent.py's `main` and webapp's `build_worker`, so
+  the two adapters can't drift apart); `links.py` (`build_links`: LinkedIn
   people-search + Google x-ray URLs — URLs only, the click is human);
   `render.py` (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
@@ -66,12 +68,16 @@ links; the click is human. This protects the account against bans.
   concern per module (mirrors sources/ and db/): `state.py` (DB handle +
   shared build/notes state under locks), `assets.py` (CSS/tabs/favicon),
   `multipart.py` (the in-house upload parser — stdlib dropped `cgi` in 3.13),
-  `layout.py` (page chrome), `workers.py` (background build/note threads),
-  `pages/` (one module per route — queue, board, due, log, company, stats,
-  profile — with GET_ROUTES in its facade; add a page by dropping a module
-  and registering it, same recipe as sources/), `server.py` (Handler +
-  `main`). Daily queue with per-target check-off, fit notes, a résumé
-  indicator, and LLM note drafting, plus outreach board/due/log/history, a
+  `layout.py` (page chrome), `workers.py` (background build/note threads —
+  `build_worker` calls `pipeline.build_queue`, the same use case the CLI
+  uses), `pages/` (one module per route — queue, board, due, log, company,
+  stats, profile — with GET_ROUTES in its facade; add a page by dropping a
+  module and registering it, same recipe as sources/), `server.py` (Handler +
+  `main`). Every module imports what it needs straight from `pipeline`/
+  `db`/`sources`/`utils` rather than through queue_agent.py — the two
+  adapters (CLI and web UI) sit side by side on the same core instead of one
+  depending on the other. Daily queue with per-target check-off, fit notes,
+  a résumé indicator, and LLM note drafting, plus outreach board/due/log/history, a
   `/stats` source-effectiveness page, and a `/profile` page to upload the
   LinkedIn export ZIP (parsed then `profile.ingest`; file is read locally,
   nothing is sent to LinkedIn). Builds run in a background thread; queue

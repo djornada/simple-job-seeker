@@ -66,9 +66,8 @@ sources/
 
 `sources/__init__.py` is the **facade**: `REGISTRY` maps a name to its
 `fetch`, and `collect_jobs(cfg)` drives every enabled source, turning a dead
-board into a logged warning rather than a crash. `queue_agent.py` re-exports
-`Job` and `collect_jobs`, so the rest of the code (and these docs) refer to
-`qa.Job` / `qa.collect_jobs` unchanged.
+board into a logged warning rather than a crash. Both `queue_agent.py` and
+`webapp/` import `Job` and `collect_jobs` straight from `sources`.
 
 **To add a board:** drop a module with a `fetch(cfg)` into `sources/`,
 register it in `REGISTRY`, and add its name to `[sources] enabled`. Providers

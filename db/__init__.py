@@ -6,8 +6,8 @@ cooldown gate; `queue` holds the pipeline writes (`mark_queued`,
 `save_queue`); `outreach_connect` owns the tracker's outreach schema on the
 same state.db; `connect` is the schema-less Row-factory handle for
 request-serving code. All schemas use CREATE TABLE IF NOT EXISTS, so
-creation order doesn't matter. queue_agent re-exports the pipeline bits so
-`qa.db_connect` / `qa.is_new` / `qa.save_queue` keep working.
+creation order doesn't matter. queue_agent.py and webapp/ both import
+straight from this package.
 """
 from __future__ import annotations
 

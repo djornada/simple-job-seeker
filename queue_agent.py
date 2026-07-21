@@ -8,9 +8,9 @@ and emits a daily queue of companies with prebuilt LinkedIn search links.
 
 You do the clicking. The script does the deciding.
 
-This module is the entrypoint + facade: the stages live in the pipeline/
-package (scoring, select, resume, links, render, over llm/ and db/) and are
-re-exported here so `qa.*` keeps working for the web UI.
+This module is the CLI entrypoint: the stages live in the pipeline/ package
+(scoring, select, resume, links, render, over llm/ and db/); the web UI
+imports them directly rather than through this module.
 
 Usage:
     python queue_agent.py              # build today's queue
@@ -25,20 +25,9 @@ import argparse
 import datetime as dt
 import sys
 
-from db import db_connect, is_new, mark_queued, save_queue  # noqa: F401 — re-exported as qa.*
-from pipeline import (  # noqa: F401 — re-exported as qa.*
-    build_links,
-    draft_note,
-    load_profile_bits,
-    load_profile_text,
-    render,
-    rerank_with_resume,
-    score_job,
-    select_queue,
-    show_stats,
-)
-from sources import Job, collect_jobs
-from utils import DB_PATH, OUT_DIR, load_config  # noqa: F401 — DB_PATH re-exported as qa.*
+from db import db_connect, save_queue
+from pipeline import build_links, build_queue, draft_note, render, show_stats
+from utils import OUT_DIR, load_config
 
 
 def main() -> int:
@@ -57,14 +46,7 @@ def main() -> int:
         return 0
 
     limit = args.n or cfg["targets"].get("per_day", 10)
-    cooldown = cfg["targets"].get("company_cooldown_days", 30)
-
-    profile_text = load_profile_text(conn)
-    pool = max(limit, cfg.get("resume", {}).get("shortlist", 30)) if profile_text else limit
-    candidates = select_queue(conn, collect_jobs(cfg), cfg, pool, cooldown)
-    if profile_text:
-        candidates = rerank_with_resume(candidates, profile_text, cfg)
-    queue = candidates[:limit]
+    queue = build_queue(conn, cfg, limit)
 
     links = {j.uid: build_links(j, cfg) for j in queue}
     notes: dict[str, str] = {}
