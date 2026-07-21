@@ -25,40 +25,14 @@ import argparse
 import datetime as dt
 import sqlite3
 import sys
-from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent / "state.db"
+from db import outreach_connect as db_connect  # noqa: F401 — re-exported for the web UI
 
 ACTIONS = ["visited", "connected", "messaged", "replied",
            "meeting", "applied", "rejected", "offer"]
 
 # stage weight for the board (higher = further down the funnel)
 STAGE_ORDER = {a: i for i, a in enumerate(ACTIONS)}
-
-
-def db_connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS outreach (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company TEXT NOT NULL,
-            person TEXT,
-            action TEXT NOT NULL,
-            note TEXT,
-            date TEXT NOT NULL,
-            followup_due TEXT,
-            followup_done INTEGER NOT NULL DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_outreach_company ON outreach(company);
-        -- shared with queue_agent.py; created here too so either tool can run first
-        CREATE TABLE IF NOT EXISTS queued_companies (
-            company TEXT PRIMARY KEY,
-            last_queued TEXT NOT NULL,
-            times_queued INTEGER NOT NULL DEFAULT 1
-        );
-    """)
-    return conn
 
 
 def resolve_company(conn: sqlite3.Connection, name: str) -> str:

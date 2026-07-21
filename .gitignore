@@ -9,3 +9,6 @@ __pycache__/
 *.zip
 # secrets — API keys live here, never in config.toml
 .env
+# local assistant/tooling state — machine-specific, never commit
+.claude/
+.tokensave/
