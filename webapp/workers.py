@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 
 import queue_agent as qa
+from db import db_connect
 
 from .state import (
     BUILD,
@@ -18,7 +19,7 @@ from .state import (
 def build_worker(with_notes: bool) -> None:
     try:
         cfg = qa.load_config()
-        conn = qa.db_connect()
+        conn = db_connect()
         limit = cfg["targets"].get("per_day", 10)
         cooldown = cfg["targets"].get("company_cooldown_days", 30)
         profile_text = qa.load_profile_text(conn)

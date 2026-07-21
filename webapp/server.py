@@ -10,8 +10,9 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import profile
-import queue_agent as qa
 import tracker
+from db import db_connect, outreach_connect
+from utils import load_config
 
 from .assets import FAVICON
 from .multipart import parse_multipart
@@ -175,13 +176,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    cfg = qa.load_config()
+    cfg = load_config()
     web = cfg.get("web", {})
     host = web.get("host", "127.0.0.1")
     port = int(web.get("port", 8765))
     # ensure both schemas exist before the first request
-    qa.db_connect().close()
-    tracker.db_connect().close()
+    db_connect().close()
+    outreach_connect().close()
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"simple-job-seeker web UI on http://{host}:{port}  (Ctrl-C to stop)")
     try:

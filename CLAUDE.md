@@ -17,8 +17,10 @@ links; the click is human. This protects the account against bans.
   lazy ALTERs; `is_new.py` is the dedup + company cooldown gate; `queue.py`
   holds the pipeline writes (`mark_queued`, `save_queue`); `outreach.py`
   (`outreach_connect`) owns the tracker's outreach schema on the same
-  state.db. All use CREATE TABLE IF NOT EXISTS, so creation order doesn't
-  matter. queue_agent re-exports the pipeline bits so `qa.*` keeps working.
+  state.db; `connect.py` (`connect`) is the schema-less Row-factory handle
+  for request-serving code (the web server ensures schemas at startup). All
+  schemas use CREATE TABLE IF NOT EXISTS, so creation order doesn't matter.
+  queue_agent re-exports the pipeline bits so `qa.*` keeps working.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
   the shared `Job` model, `_get`, and `strip_html`; `sources/__init__.py` is
@@ -59,8 +61,8 @@ links; the click is human. This protects the account against bans.
   and stores it in the `profile` table of state.db. Feeds the re-rank stage
   and connection notes.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
-  state.db via `db.outreach_connect` (re-exported as `tracker.db_connect`
-  for the web UI). Company names resolve by prefix when unambiguous.
+  state.db via `db.outreach_connect`. Company names resolve by prefix when
+  unambiguous.
 - webapp/ — local web UI package over the same pipeline + state.db (pure
   stdlib http.server, binds 127.0.0.1; run with `python -m webapp`). One
   concern per module (mirrors sources/ and db/): `state.py` (DB handle +

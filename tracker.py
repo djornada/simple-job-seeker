@@ -26,7 +26,7 @@ import datetime as dt
 import sqlite3
 import sys
 
-from db import outreach_connect as db_connect  # noqa: F401 — re-exported for the web UI
+from db import outreach_connect as db_connect
 
 ACTIONS = ["visited", "connected", "messaged", "replied",
            "meeting", "applied", "rejected", "offer"]
