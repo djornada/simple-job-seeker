@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Queue Assistant",
+  "version": "0.1.0",
+  "description": "Rate LinkedIn feed posts and job listings against your résumé using your local simple-job-seeker server.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Rate visible items"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1:3000/*",
+    "https://www.linkedin.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/feed/*"],
+      "js": ["content/feed.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.linkedin.com/jobs/*"],
+      "js": ["content/jobs.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

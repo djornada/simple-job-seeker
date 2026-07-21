@@ -12,7 +12,9 @@ account against bans.
 ## Layout
 - `server/` — Python pipeline: job collection, scoring, SQLite state, and a
   local web UI. See `server/CLAUDE.md` for its architecture.
-- `extension/` — Chrome extension (in progress): assists browsing the
-  LinkedIn feed, asks `server/` to rate/queue opportunities the user is
-  looking at. Read-only against the page — no automated clicks or
-  submissions.
+- `extension/` — Chrome extension (Manifest V3, no build step). On a
+  manual click (never automatic/continuous), reads the LinkedIn feed or a
+  Jobs page as currently rendered and POSTs it to `server/`'s `/api/rate`
+  for scoring; anything that clears the bar lands in the same queue the
+  Python pipeline writes to. Read-only against the page — no automated
+  clicks or submissions. See `extension/README.md` for setup.
