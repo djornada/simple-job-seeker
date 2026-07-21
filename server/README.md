@@ -70,7 +70,7 @@ connection sent (with `--followup 5`), and `tracker.py due` every morning.
 
 ```cron
 # weekdays at 8:30
-30 8 * * 1-5 cd /path/to/simple-job-seeker && python3 queue_agent.py > /dev/null 2>> cron.log
+30 8 * * 1-5 cd /path/to/simple-job-seeker/server && python3 queue_agent.py > /dev/null 2>> cron.log
 ```
 
 The queue lands in `queues/` either way, so you can read it whenever.
