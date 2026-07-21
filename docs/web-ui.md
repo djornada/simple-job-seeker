@@ -6,7 +6,7 @@ The web UI is the recommended way to work your queue day to day. It's a small,
 local-only app over the same `state.db` the CLIs use.
 
 ```bash
-python webapp.py
+python -m webapp
 ```
 
 By default it serves on **http://127.0.0.1:3000** (host/port come from

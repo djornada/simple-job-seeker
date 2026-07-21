@@ -21,7 +21,7 @@ database, and one config file. No framework, no third-party packages.
 | `sources/` | One module per job board behind a facade (see [below](#sources)). |
 | `profile/` | Résumé ingestion (CLI + reusable `ingest()`); writes the `profile` table. |
 | `tracker.py` | Outreach CLI (add/due/done/board/history); writes the `outreach` table. |
-| `webapp.py` | Local web UI over the same pipeline and DB (`http.server` + `sqlite3`). |
+| `webapp/` | Local web UI over the same pipeline and DB (`http.server` + `sqlite3`). |
 | `config.toml` | All configuration. Read fresh on every run. |
 | `install.sh` | Optional: install/select a GPU-fitted Ollama model. |
 | `state.db`, `queues/`, `cron.log` | Local, gitignored data. |
@@ -99,7 +99,7 @@ This is the load-bearing principle, enforced in the architecture:
   or automates LinkedIn. The résumé is a manual export *you* download and feed
   in from local disk. Every source is a public API or RSS feed. The tool only
   ever emits links for you to click.
-- **Local-only surface.** `webapp.py` binds to `127.0.0.1`; its forms reject
+- **Local-only surface.** `webapp` binds to `127.0.0.1`; its forms reject
   cross-origin POSTs. The database is never exposed.
 - **Data about real people stays out of git.** `state.db`, `queues/`,
   `cron.log`, and any `*.zip` export are gitignored.

@@ -59,15 +59,20 @@ links; the click is human. This protects the account against bans.
   and connection notes.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
   state.db. Company names resolve by prefix when unambiguous.
-- webapp.py — local web UI over the same pipeline + state.db (pure stdlib
-  http.server, binds 127.0.0.1). Daily queue with per-target check-off, fit
-  notes, a résumé indicator, and LLM note drafting, plus outreach
-  board/due/log/history, a `/stats` source-effectiveness page, and a
-  `/profile` page to upload the LinkedIn export ZIP (multipart handled by a
-  small in-house parser — stdlib dropped `cgi` in 3.13 — then `profile.ingest`;
-  file is read locally, nothing is sent to LinkedIn). Builds run in a
-  background thread; queue items persist in the queue_items table. Generates
-  links only; the click is still human.
+- webapp/ — local web UI package over the same pipeline + state.db (pure
+  stdlib http.server, binds 127.0.0.1; run with `python -m webapp`). One
+  concern per module (mirrors sources/ and db/): `state.py` (DB handle +
+  shared build/notes state under locks), `assets.py` (CSS/tabs/favicon),
+  `multipart.py` (the in-house upload parser — stdlib dropped `cgi` in 3.13),
+  `layout.py` (page chrome), `workers.py` (background build/note threads),
+  `pages.py` (per-route renderers + GET_ROUTES), `server.py` (Handler +
+  `main`). Daily queue with per-target check-off, fit notes, a résumé
+  indicator, and LLM note drafting, plus outreach board/due/log/history, a
+  `/stats` source-effectiveness page, and a `/profile` page to upload the
+  LinkedIn export ZIP (parsed then `profile.ingest`; file is read locally,
+  nothing is sent to LinkedIn). Builds run in a background thread; queue
+  items persist in the queue_items table. Generates links only; the click is
+  still human.
 - config.toml — all configuration (sources, filters, targets, resume, llm
   provider, ollama, openai).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU

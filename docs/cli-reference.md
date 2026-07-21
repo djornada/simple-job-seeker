@@ -9,7 +9,7 @@ tools share the same `state.db`, so you can mix and match freely.
 - [`tracker.py`](#trackerpy) — log and track outreach
 - [`profile`](#profile) — import your résumé
 - [`install.sh`](#installsh) — set up a local Ollama model
-- [`webapp.py`](#webapppy) — the web UI
+- [`webapp`](#webapp) — the web UI
 
 ---
 
@@ -120,12 +120,12 @@ Only needed if you want drafted notes or the résumé re-rank.
 
 ---
 
-## webapp.py
+## webapp
 
 Serve the local web UI.
 
 ```bash
-python webapp.py
+python -m webapp
 ```
 
 Binds to `[web] host`:`[web] port` (default `127.0.0.1:3000`). Full tour:

@@ -58,7 +58,7 @@ python queue_agent.py --stats     # pipeline stats, then exit
 ### From the web UI
 
 ```bash
-python webapp.py
+python -m webapp
 ```
 
 Open the printed address (by default **http://127.0.0.1:3000**) and click

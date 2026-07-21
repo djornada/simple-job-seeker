@@ -110,7 +110,7 @@ port = 3000
 | Key | Meaning |
 | --- | --- |
 | `host` | Bind address. **Leave as `127.0.0.1`** — the app is not meant to be network-exposed. |
-| `port` | Port for `webapp.py`. |
+| `port` | Port for `python -m webapp`. |
 
 ## `[ollama]`
 
