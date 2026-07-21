@@ -12,11 +12,12 @@ links; the click is human. This protects the account against bans.
   `OUT_DIR`) and config loading (`load_config`, which also loads a local
   `.env` via `_load_dotenv`). Single source of truth for on-disk locations,
   imported by both the CLI and the web UI without pulling in the pipeline.
-- db/ — SQLite state layer: `db_connect` (owns the pipeline schema —
-  seen_jobs, queued_companies, queue_items, profile — plus lazy ALTERs) and
-  `is_new` (dedup + company cooldown). tracker.py keeps its own outreach
-  schema on the same state.db; both use CREATE TABLE IF NOT EXISTS.
-  queue_agent re-exports `db_connect`/`is_new` so `qa.*` keeps working.
+- db/ — SQLite state layer, one concern per module: `db_connect.py` owns the
+  pipeline schema (seen_jobs, queued_companies, queue_items, profile) plus
+  lazy ALTERs; `is_new.py` is the dedup + company cooldown gate; `queue.py`
+  holds the pipeline writes (`mark_queued`, `save_queue`). tracker.py keeps
+  its own outreach schema on the same state.db; both use CREATE TABLE IF NOT
+  EXISTS. queue_agent re-exports these so `qa.*` keeps working.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
   the shared `Job` model, `_get`, and `strip_html`; `sources/__init__.py` is
@@ -24,19 +25,29 @@ links; the click is human. This protects the account against bans.
   turns a dead board into a warning, not a crash). Add a board by dropping a
   module here and registering it. queue_agent re-exports `Job`/`collect_jobs`
   so `qa.Job` / `qa.collect_jobs` keep working.
-- queue_agent.py — the pipeline over `sources.collect_jobs`: scores by
-  keyword (role keyword in title required, stack keywords add points),
-  filters by location, dedups in SQLite, outputs markdown to `queues/`.
-  When a profile is imported, an LLM re-rank stage
-  (`rerank_with_resume`) re-scores the keyword-gated shortlist by real fit
-  against the resume (one LLM call per job → score + one-line fit note);
-  with no profile or the backend down it stays keyword-only. Optional
-  `--notes` drafts sub-200-char connection notes via the LLM, seeded with
-  the imported profile (headline, skills, and full experience) when present.
-  The LLM backend is pluggable via `[llm].provider`: "ollama" (local,
-  default) or "openai" (any OpenAI-compatible chat endpoint, e.g. NVIDIA
-  NIM). `_llm_generate` dispatches; both backends return None when
-  unreachable so the fallback is uniform.
+- queue_agent.py — entrypoint + facade + orchestrator. Runs as `python
+  queue_agent.py` (kept a module, not a package, so cron/docs invocation is
+  unchanged); imports the stage modules below, re-exports them so `qa.*`
+  keeps working for the web UI, and holds the two orchestration bits:
+  `select_queue` (score → location filter → per-company dedup → cap) and
+  `main` (the CLI: collect → select → optional re-rank → render → persist).
+- scoring.py — keyword scoring (`score_job`): a role keyword in the title is
+  required, stack keywords add points, exclude keywords / non-Brazil-friendly
+  locations reject.
+- links.py — `build_links`: LinkedIn people-search + Google x-ray URLs for a
+  target (URLs only; the click is human).
+- render.py — `render` (queue → markdown for `queues/`) and `show_stats`.
+- llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
+  `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
+  NVIDIA NIM), and `__init__.py` as the facade — `generate` dispatches on
+  `[llm].provider` and `strip_think` drops qwen3's `<think>` leakage. Both
+  backends return None when unreachable so the fallback is uniform.
+- resume.py — resume-in-the-loop over the `llm/` facade: `load_profile_text`
+  / `load_profile_bits` read the imported profile; `rerank_with_resume`
+  re-scores the keyword-gated shortlist by real fit (one LLM call per job →
+  score + one-line fit note); `draft_note` writes sub-200-char connection
+  notes seeded with the profile. With no profile or the backend down, the
+  pipeline stays keyword-only and notes return None.
 - profile/ — resume ingestion package, one concern per module (mirrors
   sources/ and db/): `parse.py` builds the profile from the export ZIP,
   `ingest.py` persists it, `cli.py` is the `python -m profile import
@@ -50,7 +61,7 @@ links; the click is human. This protects the account against bans.
   state.db. Company names resolve by prefix when unambiguous.
 - webapp.py — local web UI over the same pipeline + state.db (pure stdlib
   http.server, binds 127.0.0.1). Daily queue with per-target check-off, fit
-  notes, a résumé indicator, and Ollama note drafting, plus outreach
+  notes, a résumé indicator, and LLM note drafting, plus outreach
   board/due/log/history, a `/stats` source-effectiveness page, and a
   `/profile` page to upload the LinkedIn export ZIP (multipart handled by a
   small in-house parser — stdlib dropped `cgi` in 3.13 — then `profile.ingest`;
