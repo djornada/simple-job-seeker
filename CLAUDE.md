@@ -67,7 +67,9 @@ links; the click is human. This protects the account against bans.
   shared build/notes state under locks), `assets.py` (CSS/tabs/favicon),
   `multipart.py` (the in-house upload parser — stdlib dropped `cgi` in 3.13),
   `layout.py` (page chrome), `workers.py` (background build/note threads),
-  `pages.py` (per-route renderers + GET_ROUTES), `server.py` (Handler +
+  `pages/` (one module per route — queue, board, due, log, company, stats,
+  profile — with GET_ROUTES in its facade; add a page by dropping a module
+  and registering it, same recipe as sources/), `server.py` (Handler +
   `main`). Daily queue with per-target check-off, fit notes, a résumé
   indicator, and LLM note drafting, plus outreach board/due/log/history, a
   `/stats` source-effectiveness page, and a `/profile` page to upload the
