@@ -19,7 +19,7 @@ database, and one config file. No framework, no third-party packages.
 | --- | --- |
 | `queue_agent.py` | The pipeline: score, filter, dedupe, rank, persist, render. Owns `state.db`'s schema. |
 | `sources/` | One module per job board behind a facade (see [below](#sources)). |
-| `profile.py` | Résumé ingestion (CLI + reusable `ingest()`); writes the `profile` table. |
+| `profile/` | Résumé ingestion (CLI + reusable `ingest()`); writes the `profile` table. |
 | `tracker.py` | Outreach CLI (add/due/done/board/history); writes the `outreach` table. |
 | `webapp.py` | Local web UI over the same pipeline and DB (`http.server` + `sqlite3`). |
 | `config.toml` | All configuration. Read fresh on every run. |
@@ -41,7 +41,7 @@ flowchart TD
     CAP --> DB[(state.db)]
     CAP --> MD[queues/date.md]
     DB --> WEB[web UI + tracker]
-    PROF[profile.py import] --> DB
+    PROF[python -m profile import] --> DB
     WEB -->|human clicks| LI[LinkedIn / Google in your browser]
 ```
 

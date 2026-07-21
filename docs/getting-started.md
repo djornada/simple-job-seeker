@@ -89,7 +89,7 @@ Import your LinkedIn data export and the queue starts ranking by *real fit*,
 not just keywords, and connection notes reference your actual experience.
 
 - Web: open the **Résumé** tab and upload the ZIP.
-- CLI: `python profile.py import ~/Downloads/YourExport.zip`
+- CLI: `python -m profile import ~/Downloads/YourExport.zip`
 
 Details and how to get the ZIP: [Résumé matching](resume-matching.md).
 

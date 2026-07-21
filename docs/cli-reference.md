@@ -7,7 +7,7 @@ tools share the same `state.db`, so you can mix and match freely.
 
 - [`queue_agent.py`](#queue_agentpy) — build the daily queue
 - [`tracker.py`](#trackerpy) — log and track outreach
-- [`profile.py`](#profilepy) — import your résumé
+- [`profile`](#profile) — import your résumé
 - [`install.sh`](#installsh) — set up a local Ollama model
 - [`webapp.py`](#webapppy) — the web UI
 
@@ -80,14 +80,14 @@ python tracker.py history Acme
 
 ---
 
-## profile.py
+## profile
 
 Import your LinkedIn résumé so the queue ranks by real fit and notes reference
 your actual experience.
 
 ```bash
-python profile.py import <export.zip>
-python profile.py show
+python -m profile import <export.zip>
+python -m profile show
 ```
 
 | Command | What it does |
@@ -96,8 +96,8 @@ python profile.py show
 | `show` | Print the stored profile — headline, skills, positions, import date. |
 
 ```bash
-python profile.py import ~/Downloads/Complete_LinkedInDataExport.zip
-python profile.py show
+python -m profile import ~/Downloads/Complete_LinkedInDataExport.zip
+python -m profile show
 ```
 
 The ZIP is read locally only — nothing is sent to LinkedIn. Where to get it

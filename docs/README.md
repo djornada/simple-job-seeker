@@ -49,7 +49,7 @@ but every knob is in one config file.
 | [Getting started](getting-started.md) | Requirements, setup, your first queue |
 | [Concepts](concepts.md) | The mental model: queue, targets, the checkbox, the pipeline |
 | [Web UI guide](web-ui.md) | Every page, button, and workflow |
-| [CLI reference](cli-reference.md) | `queue_agent.py`, `tracker.py`, `profile.py`, `install.sh` |
+| [CLI reference](cli-reference.md) | `queue_agent.py`, `tracker.py`, `profile`, `install.sh` |
 | [Résumé matching](resume-matching.md) | Import your résumé, re-rank, personalize notes |
 | [Configuration](configuration.md) | Every setting in `config.toml` |
 | [Architecture](architecture.md) | Components, data model, sources, privacy design |

@@ -25,8 +25,8 @@ success (or explains what went wrong).
 **CLI:**
 
 ```bash
-python profile.py import ~/Downloads/Complete_LinkedInDataExport.zip
-python profile.py show     # review what was stored
+python -m profile import ~/Downloads/Complete_LinkedInDataExport.zip
+python -m profile show     # review what was stored
 ```
 
 ### What gets read
@@ -84,7 +84,7 @@ without a résumé — each feature stands on its own.
 
 ## Refreshing
 
-Re-import any time (upload again, or re-run `profile.py import`). The new
+Re-import any time (upload again, or re-run `python -m profile import`). The new
 profile replaces the old one.
 
 ## Configuration

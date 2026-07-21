@@ -37,11 +37,15 @@ links; the click is human. This protects the account against bans.
   default) or "openai" (any OpenAI-compatible chat endpoint, e.g. NVIDIA
   NIM). `_llm_generate` dispatches; both backends return None when
   unreachable so the fallback is uniform.
-- profile.py — resume ingestion (`import <export.zip>` / `show` CLI, plus a
-  reusable `ingest(source)` that takes a path or file-like object). Reads a
-  LinkedIn data-export ZIP from local disk (nothing touches LinkedIn),
-  builds a full profile text (every position, untruncated), and stores it in
-  the `profile` table of state.db. Feeds the re-rank stage and connection notes.
+- profile/ — resume ingestion package, one concern per module (mirrors
+  sources/ and db/): `parse.py` builds the profile from the export ZIP,
+  `ingest.py` persists it, `cli.py` is the `python -m profile import
+  <export.zip>` / `show` CLI (via `__main__.py`). The facade re-exports
+  `ingest`/`ProfileError`/`build_profile`; `ingest(source)` takes a path or
+  file-like object. Reads a LinkedIn data-export ZIP from local disk (nothing
+  touches LinkedIn), builds a full profile text (every position, untruncated),
+  and stores it in the `profile` table of state.db. Feeds the re-rank stage
+  and connection notes.
 - tracker.py — outreach CLI (add/due/done/board/history); shares the same
   state.db. Company names resolve by prefix when unambiguous.
 - webapp.py — local web UI over the same pipeline + state.db (pure stdlib
