@@ -4,9 +4,13 @@ One concern per module (mirrors sources/ and db/):
 - scoring.py — `score_job` keyword scoring (role keyword gates, stack adds)
 - select.py  — `select_queue`: score → filter → per-company dedup → cap
 - resume.py  — resume-in-the-loop over llm/: `rerank_with_resume`,
-  `draft_note`, and the profile readers
+  `judge_fit` (the single-job primitive it batches over), `draft_note`,
+  and the profile readers
 - build.py   — `build_queue`: the shared use case (collect → select →
   optional re-rank) consumed directly by both the CLI and the web UI
+- rate.py    — `rate_jobs`: scores ad-hoc jobs/posts from the browser
+  extension the same way (score_job + judge_fit) and persists anything
+  that clears the bar into today's queue
 - links.py   — `build_links`: LinkedIn people-search + Google x-ray URLs
 - render.py  — `render` (queue → markdown) and `show_stats`, for the CLI
 
@@ -18,9 +22,11 @@ from __future__ import annotations
 
 from .build import build_queue
 from .links import build_links
+from .rate import rate_jobs
 from .render import render, show_stats
 from .resume import (
     draft_note,
+    judge_fit,
     load_profile_bits,
     load_profile_text,
     rerank_with_resume,
@@ -28,6 +34,6 @@ from .resume import (
 from .scoring import score_job
 from .select import select_queue
 
-__all__ = ["build_links", "build_queue", "draft_note", "load_profile_bits",
-           "load_profile_text", "render", "rerank_with_resume", "score_job",
-           "select_queue", "show_stats"]
+__all__ = ["build_links", "build_queue", "draft_note", "judge_fit",
+           "load_profile_bits", "load_profile_text", "rate_jobs", "render",
+           "rerank_with_resume", "score_job", "select_queue", "show_stats"]

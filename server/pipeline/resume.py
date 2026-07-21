@@ -66,7 +66,7 @@ def draft_note(job: Job, cfg: dict) -> str | None:
     return note[:200] if note else None
 
 
-def _llm_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
+def judge_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
     """Score one job against the profile. None = LLM backend unreachable."""
     prompt = (
         "Rate how well a remote job fits a candidate, 0-10, based only on the "
@@ -107,7 +107,7 @@ def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Jo
 
     scored: list[Job] = []
     for job in head:
-        result = _llm_fit(job, profile_text, cfg)
+        result = judge_fit(job, profile_text, cfg)
         if result is None:  # backend died mid-run: keep the keyword order
             return jobs
         job.llm_score = result.get("score", 0.0)

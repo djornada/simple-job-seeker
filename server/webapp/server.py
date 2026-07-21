@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import json
 import threading
 import urllib.parse
 import zipfile
@@ -12,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import profile
 import tracker
 from db import db_connect, outreach_connect
+from pipeline import rate_jobs
+from sources import Job
 from utils import load_config
 
 from .assets import FAVICON
@@ -66,13 +69,29 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.respond(fn(urllib.parse.parse_qs(query)))
 
-    def do_POST(self) -> None:
-        if not self.origin_ok():
-            self.send_error(HTTPStatus.FORBIDDEN, "cross-origin POST rejected")
+    def do_OPTIONS(self) -> None:
+        origin = self.headers.get("Origin", "")
+        path = self.path.partition("?")[0]
+        if path == "/api/rate" and origin.startswith("chrome-extension://"):
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "POST")
+            self.send_header("Access-Control-Allow-Headers",
+                             "Content-Type, X-Extension-Token")
+            self.end_headers()
             return
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length)
         path = self.path.partition("?")[0]
+        if path == "/api/rate":  # extension calls carry their own token auth
+            self.post_api_rate(raw)
+            return
+        if not self.origin_ok():
+            self.send_error(HTTPStatus.FORBIDDEN, "cross-origin POST rejected")
+            return
         if path == "/import":  # multipart file upload — keep the raw bytes
             self.post_import(raw, self.headers.get("Content-Type", ""))
             return
@@ -91,6 +110,57 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
 
     # -- POST actions -------------------------------------------------------
+
+    def post_api_rate(self, raw: bytes) -> None:
+        """Score items the browser extension read off LinkedIn; queue
+        anything that clears the bar. Token-gated since this is the one
+        endpoint on this server that accepts cross-origin POSTs."""
+        cfg = load_config()
+        token = cfg.get("extension", {}).get("token", "")
+        if not token or self.headers.get("X-Extension-Token") != token:
+            self.send_error(HTTPStatus.FORBIDDEN, "missing/invalid extension token")
+            return
+        try:
+            items = json.loads(raw.decode()).get("items", [])
+        except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+            self.send_error(HTTPStatus.BAD_REQUEST, "invalid JSON body")
+            return
+
+        jobs = []
+        for it in items:
+            url = str(it.get("url") or "").strip()
+            company = str(it.get("company") or "").strip()
+            if not url or not company:
+                continue
+            jobs.append(Job(
+                source=str(it.get("source") or "linkedin"),
+                title=str(it.get("title") or "").strip(),
+                company=company,
+                url=url,
+                location=str(it.get("location") or "").strip(),
+                description=str(it.get("description") or "").strip()[:2000],
+            ))
+
+        conn = db()
+        rated = rate_jobs(conn, jobs, cfg)
+        conn.close()
+        floor = cfg.get("resume", {}).get("min_llm_score", 5)
+        body = json.dumps({"results": [
+            {"uid": j.uid, "title": j.title, "company": j.company,
+             "score": j.score, "llm_score": j.llm_score,
+             "fit_note": j.fit_note,
+             "queued": j.score > 0 or (j.llm_score or 0) >= floor}
+            for j in rated
+        ]}).encode()
+
+        origin = self.headers.get("Origin", "")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        if origin.startswith("chrome-extension://"):
+            self.send_header("Access-Control-Allow-Origin", origin)
+        self.end_headers()
+        self.wfile.write(body)
 
     def post_build(self, form: dict[str, list[str]]) -> None:
         with BUILD_LOCK:

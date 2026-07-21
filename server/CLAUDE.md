@@ -36,14 +36,19 @@ component (e.g. `extension/`).
   `select.py` (`select_queue`: score → filter → per-company dedup → cap);
   `resume.py` (resume-in-the-loop over the `llm/` facade —
   `rerank_with_resume` re-scores the keyword-gated shortlist by real fit,
-  `draft_note` writes sub-200-char connection notes, profile readers
-  included; with no profile or the backend down the pipeline stays
+  `judge_fit` is the single-job primitive it batches over (also used by
+  rate.py), `draft_note` writes sub-200-char connection notes, profile
+  readers included; with no profile or the backend down the pipeline stays
   keyword-only and notes return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed
   directly by both queue_agent.py's `main` and webapp's `build_worker`, so
-  the two adapters can't drift apart); `links.py` (`build_links`: LinkedIn
-  people-search + Google x-ray URLs — URLs only, the click is human);
-  `render.py` (`render` queue → markdown + `show_stats`, CLI-only).
+  the two adapters can't drift apart); `rate.py` (`rate_jobs`: the third
+  use case — scores ad-hoc jobs/posts the browser extension POSTs to
+  `/api/rate` via `score_job` + `judge_fit` and persists anything that
+  clears the bar via `db.save_queue`, same as `build_queue` does for
+  board-sourced jobs); `links.py` (`build_links`: LinkedIn people-search +
+  Google x-ray URLs — URLs only, the click is human); `render.py`
+  (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
   `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
   NVIDIA NIM), and `__init__.py` as the facade — `generate` dispatches on
@@ -80,9 +85,13 @@ component (e.g. `extension/`).
   LinkedIn export ZIP (parsed then `profile.ingest`; file is read locally,
   nothing is sent to LinkedIn). Builds run in a background thread; queue
   items persist in the queue_items table. Generates links only; the click is
-  still human.
+  still human. `POST /api/rate` (in `server.py`, alongside the other POST
+  handlers) is the one route meant for cross-origin callers — the
+  `../extension/` — gated by the `X-Extension-Token` header against
+  `[extension].token` in config.toml rather than the same-origin check
+  (`origin_ok`) the web UI's own forms rely on.
 - config.toml — all configuration (sources, filters, targets, resume, llm
-  provider, ollama, openai).
+  provider, ollama, openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

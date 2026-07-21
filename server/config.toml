@@ -64,3 +64,9 @@ model = "qwen3.5"
 base_url = "https://integrate.api.nvidia.com/v1"
 api_key_env = "NVIDIA_API_KEY"
 model = "z-ai/glm-5.2"
+
+# The Chrome extension (extension/) POSTs items it reads off LinkedIn to
+# /api/rate for scoring. Blank token = endpoint disabled. Set any random
+# string here and paste the same value into the extension's popup.
+[extension]
+token = ""

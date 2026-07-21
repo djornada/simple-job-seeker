@@ -93,3 +93,11 @@ Everything lives in `config.toml`:
   or swap `draft_note()` for a LiteLLM call if you want Claude drafting them.
 - Tracker: `state.db` is plain SQLite — join your own outreach tracking
   tables onto `queued_companies` if you want reply/follow-up tracking later.
+
+## Browser extension
+
+`../extension/` is a Chrome extension that reads whatever's on screen on
+the LinkedIn feed or a Jobs page (on a manual click, nothing automatic)
+and POSTs it to this server's `/api/rate` for scoring against the same
+filters/résumé fit used above. Set `[extension].token` in `config.toml`
+to enable it — see `extension/README.md` for setup.
