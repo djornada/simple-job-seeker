@@ -107,7 +107,8 @@ Then just open the web UI whenever you sit down to work the list.
 
 - `state.db` — SQLite; jobs seen, companies queued, queue items, your résumé,
   and the outreach log.
-- `queues/<date>.md` — a markdown copy of each day's queue.
+- `queues/<date>.md` — a markdown copy of each queue built via the CLI
+  (web builds persist to `state.db` only).
 - `cron.log` — if you schedule it.
 
 All three are **gitignored** — they hold data about real people. See

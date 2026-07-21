@@ -1,7 +1,9 @@
-"""Background workers, run in daemon threads: build the queue, draft a note."""
-from __future__ import annotations
+"""Background workers, run in daemon threads: build the queue, draft a note.
 
-import datetime as dt
+The build persists to queue_items only — the web UI reads from the DB; the
+markdown file in queues/ is a CLI artifact.
+"""
+from __future__ import annotations
 
 import queue_agent as qa
 from db import db_connect
@@ -37,10 +39,6 @@ def build_worker(with_notes: bool) -> None:
                     notes[j.uid] = note
         if queue:
             qa.save_queue(conn, queue, notes)
-            links = {j.uid: qa.build_links(j, cfg) for j in queue}
-            qa.OUT_DIR.mkdir(exist_ok=True)
-            out_file = qa.OUT_DIR / f"{dt.date.today().isoformat()}.md"
-            out_file.write_text(qa.render(queue, links, notes))
         conn.close()
         error = ""
     except Exception as e:  # noqa: BLE001 — surface any failure in the UI
