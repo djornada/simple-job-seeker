@@ -9,7 +9,7 @@ from .assets import CSS, TABS
 from .state import db, esc
 
 
-def page(title: str, active: str, body: str, refresh: bool = False) -> str:
+def page(title: str, active: str, body: str) -> str:
     conn = db()
     due_n = conn.execute(
         "SELECT COUNT(*) FROM outreach WHERE followup_due IS NOT NULL "
@@ -21,14 +21,14 @@ def page(title: str, active: str, body: str, refresh: bool = False) -> str:
         cls = ' class="active"' if href == active else ""
         badge = f'<span class="badge">{due_n}</span>' if href == "/due" and due_n else ""
         nav.append(f'<a href="{href}"{cls}>{label}{badge}</a>')
-    meta = '<meta http-equiv="refresh" content="3">' if refresh else ""
     return f"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
-{meta}<title>{esc(title)} · simple-job-seeker</title>
+<title>{esc(title)} · simple-job-seeker</title>
 <style>{CSS}</style>
+<script src="/static/htmx.min.js"></script>
 </head><body>
 <div class="wrap">
 <header class="top">

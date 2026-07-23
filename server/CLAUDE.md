@@ -69,27 +69,37 @@ component (e.g. `extension/`).
 - webapp/ — local web UI package over the same pipeline + state.db (pure
   stdlib http.server, binds 127.0.0.1; run with `python -m webapp`). One
   concern per module (mirrors sources/ and db/): `state.py` (DB handle +
-  shared build/notes state under locks), `assets.py` (CSS/tabs/favicon),
-  `multipart.py` (the in-house upload parser — stdlib dropped `cgi` in 3.13),
-  `layout.py` (page chrome), `workers.py` (background build/note threads —
-  `build_worker` calls `pipeline.build_queue`, the same use case the CLI
-  uses), `pages/` (one module per route — queue, board, due, log, company,
-  stats, profile — with GET_ROUTES in its facade; add a page by dropping a
-  module and registering it, same recipe as sources/), `server.py` (Handler +
-  `main`). Every module imports what it needs straight from `pipeline`/
-  `db`/`sources`/`utils` rather than through queue_agent.py — the two
-  adapters (CLI and web UI) sit side by side on the same core instead of one
-  depending on the other. Daily queue with per-target check-off, fit notes,
-  a résumé indicator, and LLM note drafting, plus outreach board/due/log/history, a
-  `/stats` source-effectiveness page, and a `/profile` page to upload the
-  LinkedIn export ZIP (parsed then `profile.ingest`; file is read locally,
-  nothing is sent to LinkedIn). Builds run in a background thread; queue
-  items persist in the queue_items table. Generates links only; the click is
-  still human. `POST /api/rate` (in `server.py`, alongside the other POST
-  handlers) is the one route meant for cross-origin callers — the
-  `../extension/` — gated by the `X-Extension-Token` header against
-  `[extension].token` in config.toml rather than the same-origin check
-  (`origin_ok`) the web UI's own forms rely on.
+  shared build/notes state under locks), `assets.py` (CSS/tabs/favicon/
+  vendored htmx bytes), `multipart.py` (the in-house upload parser — stdlib
+  dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
+  (background build/note threads — `build_worker` calls
+  `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
+  module per route — queue, board, due, log, company, stats, profile — with
+  GET_ROUTES in its facade; add a page by dropping a module and registering
+  it, same recipe as sources/), `server.py` (Handler + `main`). Every module
+  imports what it needs straight from `pipeline`/`db`/`sources`/`utils`
+  rather than through queue_agent.py — the two adapters (CLI and web UI) sit
+  side by side on the same core instead of one depending on the other. Daily
+  queue with per-target check-off, fit notes, a résumé indicator, and LLM
+  note drafting, plus outreach board/due/log/history, a `/stats`
+  source-effectiveness page, and a `/profile` page to upload the LinkedIn
+  export ZIP (parsed then `profile.ingest`; file is read locally, nothing is
+  sent to LinkedIn). Builds run in a background thread; queue items persist
+  in the queue_items table. Generates links only; the click is still human.
+  `POST /api/rate` (in `server.py`, alongside the other POST handlers) is
+  the one route meant for cross-origin callers — the `../extension/` —
+  gated by the `X-Extension-Token` header against `[extension].token` in
+  config.toml rather than the same-origin check (`origin_ok`) the web UI's
+  own forms rely on. The `/` queue page uses htmx (vendored at
+  `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
+  webapp still makes no outbound browser requests) for in-place updates:
+  toggling an item, drafting a note, and running a build all respond with an
+  HTML fragment when the request carries `HX-Request: true` (see
+  `pages/queue.py`'s `render_item`/`note_block`/`_build_section`), falling
+  back to a normal redirect otherwise so the plain `<form>` still works with
+  JS off. Note-drafting and build-progress poll their own scoped element
+  (`GET /note-status`, `GET /build-status`) instead of the old blanket
+  `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, targets, resume, llm
   provider, ollama, openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU

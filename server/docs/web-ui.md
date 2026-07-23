@@ -14,8 +14,11 @@ By default it serves on **http://127.0.0.1:3000** (host/port come from
 purpose** — `state.db` holds data about real people, so it's never exposed to
 your network.
 
-The app is pure standard library (`http.server` + `sqlite3`), and — like
-everything here — it only generates links. The click is still human.
+The server is pure standard library (`http.server` + `sqlite3`); the only
+client-side script is [htmx](https://htmx.org), vendored locally (never a
+CDN) so ticking a target, drafting a note, or building the queue updates in
+place instead of reloading the page. Like everything here, it only
+generates links. The click is still human.
 
 ## Navigation
 

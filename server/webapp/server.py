@@ -17,9 +17,9 @@ from pipeline import rate_jobs
 from sources import Job
 from utils import load_config
 
-from .assets import FAVICON
+from .assets import FAVICON, HTMX_JS
 from .multipart import parse_multipart
-from .pages import GET_ROUTES
+from .pages import GET_ROUTES, get_build_status, note_block, render_item
 from .state import BUILD, BUILD_LOCK, NOTES_FAILED, NOTES_LOCK, NOTES_PENDING, db
 from .workers import build_worker, note_worker
 
@@ -62,6 +62,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(FAVICON, "image/x-icon")
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        if path == "/static/htmx.min.js":
+            self.send_bytes(HTMX_JS, "text/javascript")
             return
         fn = GET_ROUTES.get(path)
         if fn is None:
@@ -169,6 +172,10 @@ class Handler(BaseHTTPRequestHandler):
                 BUILD["error"] = ""
                 threading.Thread(target=build_worker,
                                  args=("notes" in form,), daemon=True).start()
+        if self.headers.get("HX-Request") == "true":
+            date = form.get("date", [""])[0]
+            self.respond(get_build_status({"date": [date]}))
+            return
         self.redirect("/")
 
     def post_import(self, raw: bytes, content_type: str) -> None:
@@ -194,6 +201,18 @@ class Handler(BaseHTTPRequestHandler):
             "UPDATE queue_items SET done = 1 - done WHERE date = ? AND uid = ?",
             (date, uid))
         conn.commit()
+        if self.headers.get("HX-Request") == "true":
+            row = conn.execute(
+                "SELECT * FROM queue_items WHERE date = ? AND uid = ?",
+                (date, uid)).fetchone()
+            conn.close()
+            if row is None:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            with NOTES_LOCK:
+                pending, failed = uid in NOTES_PENDING, uid in NOTES_FAILED
+            self.respond(render_item(row, date, load_config(), pending, failed))
+            return
         conn.close()
         self.redirect(f"/?date={urllib.parse.quote(date)}")
 
@@ -208,6 +227,9 @@ class Handler(BaseHTTPRequestHandler):
             if fresh:
                 threading.Thread(target=note_worker, args=(date, uid),
                                  daemon=True).start()
+        if uid and self.headers.get("HX-Request") == "true":
+            self.respond(note_block(date, uid, None, True, False))
+            return
         self.redirect(f"/?date={urllib.parse.quote(date)}")
 
     def post_add(self, form: dict[str, list[str]]) -> None:

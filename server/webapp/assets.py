@@ -135,3 +135,6 @@ try:
     FAVICON = (BASE_DIR / "favicon.ico").read_bytes()
 except OSError:
     FAVICON = b""
+
+# vendored (not CDN-loaded) so the webapp never makes an outbound request
+HTMX_JS = (BASE_DIR / "webapp" / "static" / "htmx.min.js").read_bytes()
