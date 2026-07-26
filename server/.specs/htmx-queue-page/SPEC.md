@@ -1,6 +1,6 @@
 # Spec: htmx on the daily-queue page
 
-Status: draft
+Status: In Progress
 Date: 2026-07-23
 
 ## 1. Problem

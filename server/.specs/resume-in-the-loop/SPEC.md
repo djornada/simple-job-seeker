@@ -1,6 +1,6 @@
 # Spec: Resume-in-the-loop job matching
 
-Status: draft
+Status: Validated
 Date: 2026-07-15
 
 ## 1. Problem
