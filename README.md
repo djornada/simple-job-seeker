@@ -39,3 +39,16 @@ python3 -m webapp            # local web UI at http://127.0.0.1:3000
 
 Both share the same `state.db`. See `server/README.md` for the full
 workflow (tracker, cron, résumé matching, config).
+
+## Inspiration and alternatives
+
+- **[ai-job-search](https://github.com/MadsLorentzen/ai-job-search)** by
+  Mads Lorentzen: a Claude Code–driven job application system. Several
+  planned features here are ported from it (see
+  [`server/.specs/ai-job-search-ports/SPEC.md`](server/.specs/ai-job-search-ports/SPEC.md)).
+  - Pick it if you want tailored CV and cover letter PDFs, a full
+    application tracker from draft to offer, and you already use Claude
+    Code.
+  - Pick simple-job-seeker if you want a daily outreach queue, a local or
+    free model, no dependencies, and nothing that touches LinkedIn
+    programmatically.
