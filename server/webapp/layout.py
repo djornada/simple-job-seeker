@@ -5,6 +5,9 @@ import datetime as dt
 import sqlite3
 import urllib.parse
 
+from db import applications as apps_db
+from utils import load_config
+
 from .assets import CSS, TABS
 from .state import db, esc
 
@@ -15,6 +18,9 @@ def page(title: str, active: str, body: str) -> str:
         "SELECT COUNT(*) FROM outreach WHERE followup_due IS NOT NULL "
         "AND followup_done = 0 AND followup_due <= ?",
         (dt.date.today().isoformat(),)).fetchone()[0]
+    cfg = load_config()  # quiet applications count toward the Due badge
+    due_n += len({a["id"] for a in apps_db.stale(conn, cfg)
+                  + apps_db.sweep_candidates(conn, cfg)})
     conn.close()
     nav = []
     for href, label in TABS:

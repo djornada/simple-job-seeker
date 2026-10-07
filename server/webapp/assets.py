@@ -121,6 +121,19 @@ input, select { font: 14px system-ui; padding: 7px 9px;
   border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
   color: var(--ink); }
 .full { grid-column: 1 / -1; }
+.rowline.app { flex-wrap: wrap; }
+.appactions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.appactions form { display: flex; gap: 6px; align-items: center; margin: 0; }
+.appactions select, .appactions input { padding: 3px 6px; font-size: 12.5px; }
+.status { font-family: var(--mono); font-size: 11px; color: var(--accent-ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; }
+.apperr { color: #8C2F1B; font-size: 12.5px; }
+.sweep { display: flex; gap: 12px; align-items: center; margin: 10px 0 0;
+  font-size: 13.5px; }
+form.inline { display: inline; margin: 0; }
+button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
+  color: var(--accent-ink); text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer; }
 .empty { margin: 40px 0; color: var(--muted); }
 .posting { margin: 18px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
 .hint { margin-top: 24px; color: var(--muted); font-size: 13px; }
@@ -131,8 +144,9 @@ input, select { font: 14px system-ui; padding: 7px 9px;
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 """
 
-TABS = [("/", "Queue"), ("/board", "Board"), ("/due", "Due"), ("/log", "Log"),
-        ("/stats", "Stats"), ("/profile", "Résumé")]
+TABS = [("/", "Queue"), ("/board", "Board"), ("/applications", "Applications"),
+        ("/due", "Due"), ("/log", "Log"), ("/stats", "Stats"),
+        ("/profile", "Résumé")]
 
 # favicon lives at the project root; loaded once, served as static bytes
 try:

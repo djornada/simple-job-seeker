@@ -189,7 +189,8 @@ CREATE TABLE IF NOT EXISTS applications (
 
 - **Lifecycle.** Open: `applied → interview → offer`. Final: `hired`,
   `rejected`, `no_response`, `withdrawn`, `declined`. Open statuses never
-  move backwards. Reopening a final status needs `--force`.
+  move backwards. Reopening a final status needs `--force`, which also
+  allows a backward move (an escape hatch for mistakes; CLI only).
 - **One history.** Every transition also appends an outreach event with the
   status as `action`, so `/board`, `/company`, `tracker.py history` and
   `/stats` keep working unchanged. `tracker.ACTIONS` gains `interview`,
@@ -218,8 +219,10 @@ CREATE TABLE IF NOT EXISTS applications (
 - **Web UI:** new `webapp/pages/applications.py` at `/applications`, grouped
   by status, with move and follow-up forms that return htmx fragments (the
   `/toggle` pattern). Queue cards get an "I applied" button that creates the
-  application from the queue row (company, title, url, uid). `/due` gains a
-  "gone quiet" section and the sweep.
+  application from the queue row (company, title, url, uid).
+  `/applications` also has a form for roles applied to outside the queue.
+  `/due` gains a "gone quiet" section and the sweep, and quiet
+  applications count toward the Due tab's badge.
 
 ### 5.4 Expired-posting check (M2)
 

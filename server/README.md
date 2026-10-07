@@ -65,8 +65,45 @@ python3 tracker.py history acme # full timeline for one company
 ```
 
 Actions: `visited`, `connected`, `messaged`, `replied`, `meeting`,
-`applied`, `rejected`, `offer`. Company names resolve by prefix when
-unambiguous, so `acme` finds "acme corp".
+`applied`, `rejected`, `offer`, `interview`, `no_response`, `withdrawn`,
+`declined`, `hired`. Company names resolve by prefix when unambiguous, so
+`acme` finds "acme corp".
+
+### Applications
+
+Track each role you applied to, with a status, and get nudged when one
+goes quiet. Nothing is ever sent for you: a follow-up is something you
+write yourself, then record.
+
+```sh
+python3 tracker.py apply acme "Senior Frontend Engineer" --url https://...
+python3 tracker.py move 3 interview --note "call with the EM on Tuesday"
+python3 tracker.py followup 3   # you followed up: resets the quiet clock
+python3 tracker.py apps         # open applications (--all: finals too)
+python3 tracker.py stale        # quiet long enough to follow up
+python3 tracker.py sweep        # quiet too long → no_response (asks y/N)
+```
+
+- Statuses: open `applied → interview → offer`, forward only; final
+  `hired`, `rejected`, `no_response`, `withdrawn`, `declined`. `move
+  --force` allows anything else (going backwards, reopening a final one).
+- One application per company + role. Every status change and follow-up
+  is also logged as an outreach action, so `board`, `history` and the web
+  UI's `/board`, `/company` and `/stats` include it.
+- Stale rules live in `config.toml`'s `[applications]`. "Quiet" counts
+  days since the last status change or follow-up:
+  - `followup_after_days` (10): `stale` and the web UI's `/due` suggest a
+    follow-up…
+  - `max_followups` (2): …until you've recorded this many.
+  - `no_response_after_days` (60): `sweep` offers to close it as
+    `no_response`, and only moves anything after you confirm.
+
+In the web UI: an **I applied** button on each queue card creates the
+application from that job (company, title, URL). `/applications` lists
+them by status, with forms to move one along or record a follow-up, plus
+a form for roles you applied to outside the queue. `/due` shows a "gone
+quiet" section and the two-step no-response sweep, and quiet applications
+count toward the Due tab's badge.
 
 Suggested habit: after the daily queue routine, one `tracker.py add` per
 connection sent (with `--followup 5`), and `tracker.py due` every morning.

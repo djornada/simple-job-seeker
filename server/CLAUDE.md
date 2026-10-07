@@ -20,8 +20,18 @@ component (e.g. `extension/`).
   IGNORE, so the first snapshot wins, and jobs with no text are skipped so
   a later rating that carries it still lands); `outreach.py`
   (`outreach_connect`) owns the tracker's outreach schema on the same
-  state.db; `connect.py` (`connect`) is the schema-less Row-factory handle
-  for request-serving code (the web server ensures schemas at startup). All
+  state.db, and runs `applications.py`'s `APPLICATIONS_SCHEMA`;
+  `applications.py` is the application lifecycle shared by tracker.py and
+  webapp/ — `apply` (one row per company + role), `move` (open
+  `applied → interview → offer` forward only, finals `hired`/`rejected`/
+  `no_response`/`withdrawn`/`declined`, `force` overrides;
+  `TransitionError` otherwise), `record_followup`, and the `[applications]`
+  stale rules (`stale`, `sweep_candidates`, `sweep`, which only moves ids
+  that are still candidates). Every change also appends an outreach event
+  with the status as `action`, so board/history/stats need no changes.
+  Import it as a module (`from db import applications`); `connect.py`
+  (`connect`) is the schema-less Row-factory handle for request-serving
+  code (the web server ensures schemas at startup). All
   schemas use CREATE TABLE IF NOT EXISTS, so creation order doesn't matter.
   Both queue_agent.py and webapp/ import straight from here.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
@@ -79,9 +89,12 @@ component (e.g. `extension/`).
   touches LinkedIn), builds a full profile text (every position, untruncated),
   and stores it in the `profile` table of state.db. Feeds the re-rank stage
   and connection notes.
-- tracker.py — outreach CLI (add/due/done/board/history); shares the same
-  state.db via `db.outreach_connect`. Company names resolve by prefix when
-  unambiguous.
+- tracker.py — outreach CLI (add/due/done/board/history) plus
+  applications (apply/move/followup/apps/stale/sweep, over
+  `db.applications`; `sweep` asks y/N); shares the same state.db via
+  `db.outreach_connect`. Company names resolve by prefix when unambiguous.
+  `ACTIONS` is append-only: `STAGE_ORDER` weights are list positions, and
+  `/stats` looks `connected`/`replied` up by name.
 - webapp/ — local web UI package over the same pipeline + state.db (pure
   stdlib http.server, binds 127.0.0.1; run with `python -m webapp`). One
   concern per module (mirrors sources/ and db/): `state.py` (DB handle +
@@ -90,10 +103,10 @@ component (e.g. `extension/`).
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
   (background build/note threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
-  module per route — queue, board, due, log, company, posting, stats,
-  profile — with GET_ROUTES in its facade; add a page by dropping a module
-  and registering it, same recipe as sources/), `server.py` (Handler +
-  `main`). Every module
+  module per route — queue, board, applications, due, log, company,
+  posting, stats, profile — with GET_ROUTES in its facade; add a page by
+  dropping a module and registering it, same recipe as sources/),
+  `server.py` (Handler + `main`). Every module
   imports what it needs straight from `pipeline`/`db`/`sources`/`utils`
   rather than through queue_agent.py — the two adapters (CLI and web UI) sit
   side by side on the same core instead of one depending on the other. Daily
@@ -114,7 +127,15 @@ component (e.g. `extension/`).
   `- Flags:` line in the markdown queue).
   `GET /posting?uid=` shows a job's archived text, archive date and
   original URL; queue cards link to it ("saved posting") when a row exists
-  (`pages/queue.py`'s `ITEM_SELECT` adds the `archived` flag). The `/`
+  (`pages/queue.py`'s `ITEM_SELECT` adds the `archived` flag). Applications:
+  an "I applied" button on each queue card (`POST /apply` with date + uid;
+  `ITEM_SELECT`'s `app_id` turns it into an "applied ✓" link),
+  `/applications` grouped by status with move/follow-up forms answering
+  htmx with the re-rendered row (`render_app`, the `/toggle` pattern) and a
+  form for roles applied to outside the queue (`POST /apply` with company
+  + role), and on `/due` a "gone quiet" list plus a two-step no-response
+  sweep (`/due?sweep=confirm`, then `POST /applications/sweep`). Quiet
+  applications add to the Due tab's badge (`layout.page`). The `/`
   queue page uses htmx (vendored at
   `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
   webapp still makes no outbound browser requests) for in-place updates:
@@ -126,7 +147,7 @@ component (e.g. `extension/`).
   (`GET /note-status`, `GET /build-status`) instead of the old blanket
   `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, gates, targets,
-  resume, llm provider, ollama, openai, extension token).
+  resume, applications, llm provider, ollama, openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

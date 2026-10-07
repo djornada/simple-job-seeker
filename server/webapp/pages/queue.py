@@ -23,9 +23,11 @@ from ..state import (
 )
 
 
-# Queue rows plus whether the posting text is archived (the card links it).
+# Queue rows plus whether the posting text is archived and the application
+# made from it, if any (the card links both).
 ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid) "
-               "AS archived FROM queue_items q")
+               "AS archived, (SELECT a.id FROM applications a WHERE a.uid = q.uid "
+               "LIMIT 1) AS app_id FROM queue_items q")
 
 
 def note_block(date: str, uid: str, note: str | None, pending: bool,
@@ -71,6 +73,16 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
     for label, url in build_links(job, cfg).items():
         linkrow.append(f'<a href="{esc(url)}" target="_blank" '
                        f'rel="noopener">{esc(label)}</a>')
+    if r["app_id"]:
+        linkrow.append(f'<a href="/applications#app-{r["app_id"]}">applied ✓</a>')
+    else:
+        linkrow.append(
+            f'<form class="inline" method="post" action="/apply" hx-post="/apply" '
+            f'hx-target="closest article" hx-swap="outerHTML">'
+            f'<input type="hidden" name="date" value="{esc(date)}">'
+            f'<input type="hidden" name="uid" value="{esc(r["uid"])}">'
+            f'<button class="linkbtn" title="track it on /applications">'
+            f'I applied</button></form>')
     meta_bits = [esc(r["title"])]
     if r["location"]:
         meta_bits.append(esc(r["location"]))

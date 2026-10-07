@@ -1,6 +1,7 @@
 """Outreach connection + schema, on the same shared state.db.
 
-Used by the tracker CLI and the web UI. Row factory is sqlite3.Row because
+Used by the tracker CLI and the web UI. Also ensures the applications
+table (`db/applications.py`). Row factory is sqlite3.Row because
 every consumer reads columns by name.
 """
 from __future__ import annotations
@@ -8,6 +9,8 @@ from __future__ import annotations
 import sqlite3
 
 from utils import DB_PATH
+
+from .applications import APPLICATIONS_SCHEMA
 
 
 def outreach_connect() -> sqlite3.Connection:
@@ -32,4 +35,5 @@ def outreach_connect() -> sqlite3.Connection:
             times_queued INTEGER NOT NULL DEFAULT 1
         );
     """)
+    conn.executescript(APPLICATIONS_SCHEMA)
     return conn

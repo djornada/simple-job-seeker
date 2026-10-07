@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import io
 import json
+import sqlite3
 import threading
 import urllib.parse
 import zipfile
@@ -12,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import profile
 import tracker
+from db import applications as apps_db
 from db import db_connect, outreach_connect
 from pipeline import rate_jobs
 from sources import Job
@@ -24,6 +26,7 @@ from .pages import (
     ITEM_SELECT,
     get_build_status,
     note_block,
+    render_app,
     render_item,
 )
 from .state import BUILD, BUILD_LOCK, NOTES_FAILED, NOTES_LOCK, NOTES_PENDING, db
@@ -115,6 +118,14 @@ class Handler(BaseHTTPRequestHandler):
             self.post_add(form)
         elif path == "/done":
             self.post_done(form)
+        elif path == "/apply":
+            self.post_apply(form)
+        elif path == "/applications/move":
+            self.post_app_move(form)
+        elif path == "/applications/followup":
+            self.post_app_followup(form)
+        elif path == "/applications/sweep":
+            self.post_app_sweep(form)
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -209,6 +220,11 @@ class Handler(BaseHTTPRequestHandler):
             "UPDATE queue_items SET done = 1 - done WHERE date = ? AND uid = ?",
             (date, uid))
         conn.commit()
+        self.respond_item(conn, date, uid)
+
+    def respond_item(self, conn: sqlite3.Connection, date: str, uid: str) -> None:
+        """After a queue-card action: the re-rendered card for htmx, else a
+        redirect back to that day's queue. Closes `conn`."""
         if self.headers.get("HX-Request") == "true":
             row = conn.execute(
                 f"{ITEM_SELECT} WHERE date = ? AND uid = ?",
@@ -272,6 +288,89 @@ class Handler(BaseHTTPRequestHandler):
                          (int(raw),))
             conn.commit()
             conn.close()
+        self.redirect("/due")
+
+
+    def post_apply(self, form: dict[str, list[str]]) -> None:
+        """"I applied": from a queue card (date + uid) or the
+        /applications form (company + role)."""
+        date = form.get("date", [""])[0]
+        uid = form.get("uid", [""])[0]
+        conn = db()
+        if uid:
+            row = conn.execute(
+                "SELECT company, title, url FROM queue_items "
+                "WHERE date = ? AND uid = ?", (date, uid)).fetchone()
+            if row is None:
+                conn.close()
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            apps_db.apply(conn, row["company"], row["title"] or "(no title)",
+                          url=row["url"], uid=uid)
+            self.respond_item(conn, date, uid)
+            return
+        company = form.get("company", [""])[0].strip()
+        role = form.get("role", [""])[0].strip()
+        if not company or not role:
+            conn.close()
+            self.redirect("/applications?err="
+                          + urllib.parse.quote("company and role are required"))
+            return
+        apps_db.apply(conn, tracker.resolve_company(conn, company), role,
+                      url=form.get("url", [""])[0].strip() or None,
+                      note=form.get("note", [""])[0].strip() or None)
+        conn.close()
+        self.redirect("/applications")
+
+    def respond_app(self, conn: sqlite3.Connection, raw_id: str, error: str,
+                    form: dict[str, list[str]]) -> None:
+        """After an application action: the re-rendered row for htmx, else
+        a redirect to /due or /applications. Closes `conn`."""
+        if self.headers.get("HX-Request") == "true":
+            try:
+                row = apps_db.get(conn, int(raw_id))
+            except (apps_db.TransitionError, ValueError):
+                conn.close()
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            conn.close()
+            self.respond(render_app(row, error))
+            return
+        conn.close()
+        back = "/due" if form.get("back", [""])[0] == "/due" else "/applications"
+        self.redirect(back + ("?err=" + urllib.parse.quote(error) if error else ""))
+
+    def post_app_move(self, form: dict[str, list[str]]) -> None:
+        raw_id = form.get("id", [""])[0]
+        note = form.get("note", [""])[0].strip() or None
+        conn = db()
+        error = ""
+        try:
+            apps_db.move(conn, int(raw_id), form.get("status", [""])[0], note=note)
+        except apps_db.TransitionError as e:
+            error = str(e)
+        except ValueError:
+            error = "bad application id"
+        self.respond_app(conn, raw_id, error, form)
+
+    def post_app_followup(self, form: dict[str, list[str]]) -> None:
+        raw_id = form.get("id", [""])[0]
+        conn = db()
+        error = ""
+        try:
+            apps_db.record_followup(conn, int(raw_id))
+        except apps_db.TransitionError as e:
+            error = str(e)
+        except ValueError:
+            error = "bad application id"
+        self.respond_app(conn, raw_id, error, form)
+
+    def post_app_sweep(self, form: dict[str, list[str]]) -> None:
+        """Second step of /due's sweep: move the confirmed ids."""
+        ids = [int(i) for i in form.get("id", []) if i.isdigit()]
+        conn = db()
+        apps_db.sweep(conn, load_config(), ids)
+        conn.close()
         self.redirect("/due")
 
 

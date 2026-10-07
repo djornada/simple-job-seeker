@@ -63,6 +63,13 @@ region_only = [
 shortlist = 30       # jobs sent to LLM re-rank after keyword gate
 min_llm_score = 5    # drop jobs the model scores below this (0 disables)
 
+# Applications (tracker.py apply/move/stale/sweep, /applications, /due).
+# "Quiet" = days since the application's last activity, open statuses only.
+[applications]
+followup_after_days = 10     # quiet this long → suggest a follow-up
+max_followups = 2            # stop suggesting after this many
+no_response_after_days = 60  # quiet this long → offer the no-response sweep
+
 [web]
 host = "127.0.0.1"   # keep it local: state.db holds data about real people
 port = 3000
