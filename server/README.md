@@ -34,6 +34,9 @@ Each run:
 3. Drops non-Brazil-friendly locations (`brazil_friendly_only`)
 4. Skips jobs already seen and companies queued in the last 30 days (SQLite)
 5. Prints the queue and saves it to `queues/YYYY-MM-DD.md`
+6. Archives each queued job's full posting text in `state.db`, so it
+   survives the post being taken down. The web UI's queue cards link to
+   it as "saved posting" (`/posting?uid=…`).
 
 Per target you get: the job post, a LinkedIn people-search link for each role
 in `people_roles`, and a Google x-ray search as fallback.

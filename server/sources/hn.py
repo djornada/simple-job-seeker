@@ -21,7 +21,8 @@ def fetch(cfg: dict) -> list[Job]:
         raw = comment.get("text") or ""
         if not raw:
             continue
-        description = strip_html(raw)
+        text = strip_html(raw, None)
+        description = text[:2000]
         if "remote" not in description.lower():
             continue
         # Conventional header line: "Company | Role | Location | ..."
@@ -37,5 +38,6 @@ def fetch(cfg: dict) -> list[Job]:
             url=f"https://news.ycombinator.com/item?id={comment['id']}",
             location=parts[2] if len(parts) > 2 else "",
             description=description,
+            full_text=text,
         ))
     return jobs

@@ -58,7 +58,7 @@
       title, company,
       url: absoluteUrl(location.href),
       location: cleanText(document.querySelector(SELECTORS.detailLocation)),
-      description: cleanText(document.querySelector(SELECTORS.detailDescription)).slice(0, 2000),
+      description: cleanText(document.querySelector(SELECTORS.detailDescription)).slice(0, 20000),
     };
   }
 

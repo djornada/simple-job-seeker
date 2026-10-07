@@ -6,6 +6,8 @@ import sqlite3
 
 from sources import Job
 
+from .postings import archive_posting
+
 
 def mark_queued(conn: sqlite3.Connection, job: Job) -> None:
     today = dt.date.today().isoformat()
@@ -24,10 +26,12 @@ def mark_queued(conn: sqlite3.Connection, job: Job) -> None:
 
 def save_queue(conn: sqlite3.Connection, queue: list[Job],
                notes: dict[str, str]) -> None:
-    """Persist queue items (feeds the web UI) and mark companies queued."""
+    """Persist queue items (feeds the web UI), mark companies queued and
+    archive each posting's full text."""
     today = dt.date.today().isoformat()
     for j in queue:
         mark_queued(conn, j)
+        archive_posting(conn, j)
         conn.execute("""
             INSERT INTO queue_items
                 (date, uid, source, company, title, url, location, score, note,

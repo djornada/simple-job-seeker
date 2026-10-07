@@ -5,6 +5,8 @@ import sqlite3
 
 from utils import DB_PATH
 
+from .postings import POSTINGS_SCHEMA
+
 
 def db_connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -42,6 +44,7 @@ def db_connect() -> sqlite3.Connection:
             imported_at TEXT
         );
     """)
+    conn.executescript(POSTINGS_SCHEMA)
     for col in ("description TEXT", "fit_note TEXT", "llm_score REAL"):
         try:
             conn.execute(f"ALTER TABLE queue_items ADD COLUMN {col}")

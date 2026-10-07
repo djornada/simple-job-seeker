@@ -22,6 +22,11 @@ from ..state import (
 )
 
 
+# Queue rows plus whether the posting text is archived (the card links it).
+ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid) "
+               "AS archived FROM queue_items q")
+
+
 def note_block(date: str, uid: str, note: str | None, pending: bool,
                failed: bool) -> str:
     """The note area for one item: existing note, pending, or draft button.
@@ -59,6 +64,9 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
              url=r["url"], location=r["location"])
     linkrow = [f'<a href="{esc(r["url"])}" target="_blank" '
                f'rel="noopener">job post</a>']
+    if r["archived"]:
+        qs = urllib.parse.urlencode({"uid": r["uid"]})
+        linkrow.append(f'<a href="/posting?{esc(qs)}">saved posting</a>')
     for label, url in build_links(job, cfg).items():
         linkrow.append(f'<a href="{esc(url)}" target="_blank" '
                        f'rel="noopener">{esc(label)}</a>')
@@ -180,7 +188,7 @@ def page_queue(params: dict[str, list[str]]) -> str:
     if not DATE_RE.fullmatch(date):
         date = dates[0] if dates else today
     rows = conn.execute(
-        "SELECT * FROM queue_items WHERE date = ? "
+        f"{ITEM_SELECT} WHERE date = ? "
         "ORDER BY llm_score IS NULL, llm_score DESC, score DESC, company",
         (date,)).fetchall()
     prow = conn.execute(

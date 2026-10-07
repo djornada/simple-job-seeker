@@ -341,7 +341,7 @@ Depends on 5.1 (full posting text). Independent of 5.5.
 | `webapp/workers.py` | 5.7 |
 | `extension/content/jobs.js`, `extension/popup.js` | 5.1 cap; 5.2 flags |
 | `config.toml` | `[gates]`, `[applications]`, `[expiry]`, `[resume.weights]`, `[resume].goals`, `[keywords]` |
-| `server/CLAUDE.md`, `docs/*.md` | each port documents itself |
+| `server/CLAUDE.md`, `server/README.md` | each port documents itself |
 
 ## 7. Out of scope
 
@@ -384,8 +384,7 @@ There's no test suite. Verify by hand against a copy of a real `state.db`:
 
 5.1 → 5.2 → 5.3 → 5.4 → 5.5 → 5.6 → 5.7, which is milestone order. Ship
 each port as its own commit set, with its docs (`server/CLAUDE.md`
-architecture notes, `docs/configuration.md`, `docs/cli-reference.md`,
-`docs/web-ui.md`).
+architecture notes, `server/README.md` for usage and config).
 
 ## 10. Tracking
 

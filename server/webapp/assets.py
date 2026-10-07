@@ -119,6 +119,7 @@ input, select { font: 14px system-ui; padding: 7px 9px;
   color: var(--ink); }
 .full { grid-column: 1 / -1; }
 .empty { margin: 40px 0; color: var(--muted); }
+.posting { margin: 18px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
 .hint { margin-top: 24px; color: var(--muted); font-size: 13px; }
 @media (max-width: 620px) {
   form.logform { grid-template-columns: 1fr; }

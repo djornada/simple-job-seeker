@@ -11,9 +11,14 @@ component (e.g. `extension/`).
   `.env` via `_load_dotenv`). Single source of truth for on-disk locations,
   imported by both the CLI and the web UI without pulling in the pipeline.
 - db/ — SQLite state layer, one concern per module: `db_connect.py` owns the
-  pipeline schema (seen_jobs, queued_companies, queue_items, profile) plus
-  lazy ALTERs; `is_new.py` is the dedup + company cooldown gate; `queue.py`
-  holds the pipeline writes (`mark_queued`, `save_queue`); `outreach.py`
+  pipeline schema (seen_jobs, queued_companies, queue_items, profile,
+  postings) plus lazy ALTERs; `is_new.py` is the dedup + company cooldown
+  gate; `queue.py` holds the pipeline writes (`mark_queued`, `save_queue`);
+  `postings.py` owns the posting archive (`POSTINGS_SCHEMA`, run by
+  `db_connect`, and `archive_posting`, which `save_queue` calls for every
+  job it persists — board builds and extension ratings alike; INSERT OR
+  IGNORE, so the first snapshot wins, and jobs with no text are skipped so
+  a later rating that carries it still lands); `outreach.py`
   (`outreach_connect`) owns the tracker's outreach schema on the same
   state.db; `connect.py` (`connect`) is the schema-less Row-factory handle
   for request-serving code (the web server ensures schemas at startup). All
@@ -21,10 +26,13 @@ component (e.g. `extension/`).
   Both queue_agent.py and webapp/ import straight from here.
 - sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
-  the shared `Job` model, `_get`, and `strip_html`; `sources/__init__.py` is
-  the facade (`REGISTRY` + `collect_jobs`, which drives enabled sources and
-  turns a dead board into a warning, not a crash). Add a board by dropping a
-  module here and registering it.
+  the shared `Job` model, `_get`, and `strip_html` (`limit=None` keeps the
+  whole text). Each source sets `Job.full_text` to the untruncated posting
+  (archived in `postings`) and `description` to `full_text[:2000]`, the
+  slice the LLM sees. `sources/__init__.py` is the facade (`REGISTRY` +
+  `collect_jobs`, which drives enabled sources and turns a dead board into
+  a warning, not a crash). Add a board by dropping a module here and
+  registering it.
 - queue_agent.py — the CLI entrypoint. Runs as `python queue_agent.py`
   (kept a module, not a package, so cron/docs invocation is unchanged);
   holds `main` only (collect → select → optional re-rank → render →
@@ -74,9 +82,10 @@ component (e.g. `extension/`).
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
   (background build/note threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
-  module per route — queue, board, due, log, company, stats, profile — with
-  GET_ROUTES in its facade; add a page by dropping a module and registering
-  it, same recipe as sources/), `server.py` (Handler + `main`). Every module
+  module per route — queue, board, due, log, company, posting, stats,
+  profile — with GET_ROUTES in its facade; add a page by dropping a module
+  and registering it, same recipe as sources/), `server.py` (Handler +
+  `main`). Every module
   imports what it needs straight from `pipeline`/`db`/`sources`/`utils`
   rather than through queue_agent.py — the two adapters (CLI and web UI) sit
   side by side on the same core instead of one depending on the other. Daily
@@ -90,7 +99,12 @@ component (e.g. `extension/`).
   the one route meant for cross-origin callers — the `../extension/` —
   gated by the `X-Extension-Token` header against `[extension].token` in
   config.toml rather than the same-origin check (`origin_ok`) the web UI's
-  own forms rely on. The `/` queue page uses htmx (vendored at
+  own forms rely on; it trims each item's description to 2,000 chars for
+  the LLM and keeps up to 20,000 as `full_text` for the archive.
+  `GET /posting?uid=` shows a job's archived text, archive date and
+  original URL; queue cards link to it ("saved posting") when a row exists
+  (`pages/queue.py`'s `ITEM_SELECT` adds the `archived` flag). The `/`
+  queue page uses htmx (vendored at
   `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
   webapp still makes no outbound browser requests) for in-place updates:
   toggling an item, drafting a note, and running a build all respond with an

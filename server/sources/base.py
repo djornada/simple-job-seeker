@@ -17,7 +17,8 @@ class Job:
     tags: list[str] = field(default_factory=list)
     location: str = ""
     score: float = 0.0
-    description: str = ""
+    description: str = ""  # full_text[:2000], what the LLM sees
+    full_text: str = ""    # untruncated, archived in `postings`
     llm_score: float | None = None
     fit_note: str = ""
 
@@ -41,7 +42,8 @@ class _TextExtractor(HTMLParser):
         self.parts.append(data)
 
 
-def strip_html(raw: str, limit: int = 2000) -> str:
+def strip_html(raw: str, limit: int | None = 2000) -> str:
+    """HTML to collapsed plain text; `limit=None` keeps all of it."""
     if not raw:
         return ""
     parser = _TextExtractor()

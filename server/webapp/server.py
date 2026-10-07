@@ -19,7 +19,13 @@ from utils import load_config
 
 from .assets import FAVICON, HTMX_JS
 from .multipart import parse_multipart
-from .pages import GET_ROUTES, get_build_status, note_block, render_item
+from .pages import (
+    GET_ROUTES,
+    ITEM_SELECT,
+    get_build_status,
+    note_block,
+    render_item,
+)
 from .state import BUILD, BUILD_LOCK, NOTES_FAILED, NOTES_LOCK, NOTES_PENDING, db
 from .workers import build_worker, note_worker
 
@@ -135,13 +141,15 @@ class Handler(BaseHTTPRequestHandler):
             company = str(it.get("company") or "").strip()
             if not url or not company:
                 continue
+            text = str(it.get("description") or "").strip()
             jobs.append(Job(
                 source=str(it.get("source") or "linkedin"),
                 title=str(it.get("title") or "").strip(),
                 company=company,
                 url=url,
                 location=str(it.get("location") or "").strip(),
-                description=str(it.get("description") or "").strip()[:2000],
+                description=text[:2000],
+                full_text=text[:20000],
             ))
 
         conn = db()
@@ -203,7 +211,7 @@ class Handler(BaseHTTPRequestHandler):
         conn.commit()
         if self.headers.get("HX-Request") == "true":
             row = conn.execute(
-                "SELECT * FROM queue_items WHERE date = ? AND uid = ?",
+                f"{ITEM_SELECT} WHERE date = ? AND uid = ?",
                 (date, uid)).fetchone()
             conn.close()
             if row is None:

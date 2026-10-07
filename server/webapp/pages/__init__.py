@@ -9,8 +9,10 @@ from .board import page_board
 from .company import page_company
 from .due import page_due
 from .log import page_log
+from .posting import page_posting
 from .profile import page_profile
 from .queue import (
+    ITEM_SELECT,
     get_build_status,
     get_note_status,
     note_block,
@@ -25,12 +27,14 @@ GET_ROUTES = {
     "/due": page_due,
     "/log": page_log,
     "/company": page_company,
+    "/posting": page_posting,
     "/stats": page_stats,
     "/profile": page_profile,
     "/note-status": get_note_status,
     "/build-status": get_build_status,
 }
 
-__all__ = ["GET_ROUTES", "get_build_status", "note_block", "page_board",
-           "page_company", "page_due", "page_log", "page_profile",
-           "page_queue", "page_stats", "render_item"]
+__all__ = ["GET_ROUTES", "ITEM_SELECT", "get_build_status", "note_block",
+           "page_board", "page_company", "page_due", "page_log",
+           "page_posting", "page_profile", "page_queue", "page_stats",
+           "render_item"]

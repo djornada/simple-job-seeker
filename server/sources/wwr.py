@@ -19,11 +19,13 @@ def fetch(cfg: dict) -> list[Job]:
             company, _, title = raw.partition(":")
             if not title:
                 title, company = raw, ""
+            text = strip_html(desc_el.text if desc_el is not None else "", None)
             jobs.append(Job(
                 source="wwr",
                 title=title.strip(),
                 company=company.strip(),
                 url=(link_el.text or "").strip(),
-                description=strip_html(desc_el.text if desc_el is not None else ""),
+                description=text[:2000],
+                full_text=text,
             ))
     return jobs

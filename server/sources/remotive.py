@@ -13,6 +13,7 @@ def fetch(cfg: dict) -> list[Job]:
         url = f"https://remotive.com/api/remote-jobs?search={q}&limit=50"
         data = json.loads(_get(url))
         for item in data.get("jobs", []):
+            text = strip_html(item.get("description", ""), None)
             jobs.append(Job(
                 source="remotive",
                 title=item.get("title", ""),
@@ -20,6 +21,7 @@ def fetch(cfg: dict) -> list[Job]:
                 url=item.get("url", ""),
                 tags=[t.lower() for t in item.get("tags", [])],
                 location=item.get("candidate_required_location", ""),
-                description=strip_html(item.get("description", "")),
+                description=text[:2000],
+                full_text=text,
             ))
     return jobs
