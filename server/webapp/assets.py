@@ -128,6 +128,8 @@ input, select { font: 14px system-ui; padding: 7px 9px;
 .status { font-family: var(--mono); font-size: 11px; color: var(--accent-ink);
   border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; }
 .apperr { color: #8C2F1B; font-size: 12.5px; }
+.expired { font-family: var(--mono); font-size: 11px; color: #8C2F1B;
+  background: #F6E1DC; border-radius: 8px; padding: 0 6px; }
 .sweep { display: flex; gap: 12px; align-items: center; margin: 10px 0 0;
   font-size: 13.5px; }
 form.inline { display: inline; margin: 0; }

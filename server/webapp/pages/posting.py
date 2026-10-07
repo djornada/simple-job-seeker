@@ -18,10 +18,16 @@ def page_posting(params: dict[str, list[str]]) -> str:
     if row["location"]:
         meta_bits.append(esc(row["location"]))
     meta_bits.append(esc(row["source"]))
+    status = ""
+    if row["expired_at"]:
+        status = (f' · <span class="expired">expired '
+                  f'{esc(row["expired_at"][:10])}</span>')
+    elif row["checked_at"]:
+        status = f' · still up {esc(row["checked_at"][:10])}'
     head = f"""
 <div class="manifest">
   <div>
-    <div class="eyebrow">Saved posting · archived {esc(row['archived_at'][:10])}</div>
+    <div class="eyebrow">Saved posting · archived {esc(row['archived_at'][:10])}{status}</div>
     <h1>{esc(row['company'])}</h1>
     <p class="meta">{' · '.join(meta_bits)}</p>
     <p class="linkrow"><a href="{esc(row['url'])}" target="_blank"

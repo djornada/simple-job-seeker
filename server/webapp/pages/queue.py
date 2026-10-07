@@ -23,11 +23,13 @@ from ..state import (
 )
 
 
-# Queue rows plus whether the posting text is archived and the application
-# made from it, if any (the card links both).
+# Queue rows plus whether the posting text is archived, when it was found
+# expired, and the application made from it, if any (the card shows all).
 ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid) "
-               "AS archived, (SELECT a.id FROM applications a WHERE a.uid = q.uid "
-               "LIMIT 1) AS app_id FROM queue_items q")
+               "AS archived, (SELECT p.expired_at FROM postings p "
+               "WHERE p.uid = q.uid) AS expired_at, (SELECT a.id FROM "
+               "applications a WHERE a.uid = q.uid LIMIT 1) AS app_id "
+               "FROM queue_items q")
 
 
 def note_block(date: str, uid: str, note: str | None, pending: bool,
@@ -87,6 +89,9 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
     if r["location"]:
         meta_bits.append(esc(r["location"]))
     meta_bits.append(esc(r["source"]))
+    if r["expired_at"]:
+        meta_bits.append(f'<span class="expired" title="the board took the '
+                         f'post down">expired {esc(r["expired_at"][:10])}</span>')
 
     fit_html = ""
     if r["fit_note"]:
@@ -207,8 +212,8 @@ def page_queue(params: dict[str, list[str]]) -> str:
     if not DATE_RE.fullmatch(date):
         date = dates[0] if dates else today
     rows = conn.execute(
-        f"{ITEM_SELECT} WHERE date = ? "
-        "ORDER BY llm_score IS NULL, llm_score DESC, score DESC, company",
+        f"{ITEM_SELECT} WHERE date = ? ORDER BY expired_at IS NOT NULL, "
+        "llm_score IS NULL, llm_score DESC, score DESC, company",
         (date,)).fetchall()
     prow = conn.execute(
         "SELECT headline FROM profile WHERE id = 1").fetchone()

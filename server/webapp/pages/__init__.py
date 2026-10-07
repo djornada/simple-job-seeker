@@ -5,7 +5,7 @@ GET_ROUTES (same recipe as sources/REGISTRY).
 """
 from __future__ import annotations
 
-from .applications import page_applications, render_app
+from .applications import expired_on, page_applications, render_app
 from .board import page_board
 from .company import page_company
 from .due import page_due
@@ -36,7 +36,7 @@ GET_ROUTES = {
     "/build-status": get_build_status,
 }
 
-__all__ = ["GET_ROUTES", "ITEM_SELECT", "get_build_status", "note_block",
-           "page_applications", "page_board", "page_company", "page_due", "page_log",
-           "page_posting", "page_profile", "page_queue", "page_stats",
-           "render_app", "render_item"]
+__all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
+           "note_block", "page_applications", "page_board", "page_company",
+           "page_due", "page_log", "page_posting", "page_profile",
+           "page_queue", "page_stats", "render_app", "render_item"]

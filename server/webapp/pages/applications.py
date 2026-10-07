@@ -10,15 +10,29 @@ from ..layout import page
 from ..state import db, esc
 
 
-def render_app(a: sqlite3.Row, error: str = "") -> str:
+def expired_on(conn: sqlite3.Connection, uids: list[str]) -> dict[str, str]:
+    """uid → expired_at for the archived postings among `uids` that expired."""
+    uids = [u for u in uids if u]
+    if not uids:
+        return {}
+    marks = ",".join("?" * len(uids))
+    return dict(conn.execute(
+        f"SELECT uid, expired_at FROM postings WHERE uid IN ({marks}) "
+        "AND expired_at IS NOT NULL", uids).fetchall())
+
+
+def render_app(a: sqlite3.Row, error: str = "", expired: str = "") -> str:
     """One application row with its move/follow-up forms. Shared by the
-    page and the htmx fragment `POST /applications/move|followup` return."""
+    page and the htmx fragment `POST /applications/move|followup` return.
+    `expired` is the posting's expired_at, when the board took it down."""
     q = urllib.parse.quote(a["company"])
     post = (f' · <a href="{esc(a["url"])}" target="_blank" rel="noopener">'
             'job post</a>' if a["url"] else "")
     meta = (f'<span class="status">{esc(a["status"])}</span> '
             f'<small style="color:var(--muted)">quiet {apps_db.quiet_days(a)}d'
             f' · follow-ups {a["followups_sent"]}</small>')
+    if expired:
+        meta += f' <span class="expired">post expired {esc(expired[:10])}</span>'
     err = f' <span class="apperr">{esc(error)}</span>' if error else ""
     hx = ' hx-target="closest .rowline" hx-swap="outerHTML"'
     actions = ""
@@ -48,6 +62,7 @@ def render_app(a: sqlite3.Row, error: str = "") -> str:
 def page_applications(params: dict[str, list[str]]) -> str:
     conn = db()
     rows = apps_db.list_apps(conn)
+    expired = expired_on(conn, [a["uid"] for a in rows])
     conn.close()
     err = params.get("err", [""])[0]
     banner = f'<p class="banner err">{esc(err)}</p>' if err else ""
@@ -55,7 +70,8 @@ def page_applications(params: dict[str, list[str]]) -> str:
     for status in tuple(reversed(apps_db.OPEN)) + apps_db.FINAL:
         group = [a for a in rows if a["status"] == status]
         if group:
-            lines = "".join(render_app(a) for a in reversed(group))
+            lines = "".join(render_app(a, expired=expired.get(a["uid"], ""))
+                            for a in reversed(group))
             sections.append(f'<section class="stage"><h2>{esc(status)} '
                             f'({len(group)})</h2>{lines}</section>')
     if not sections:

@@ -25,6 +25,7 @@ python3 queue_agent.py --notes     # + draft <200 char connection notes (Ollama)
 python3 queue_agent.py -n 5        # smaller queue
 python3 queue_agent.py --dry-run   # preview without saving state
 python3 queue_agent.py --stats     # pipeline stats
+python3 queue_agent.py --recheck   # mark archived postings that were taken down
 ```
 
 Each run:
@@ -113,9 +114,19 @@ connection sent (with `--followup 5`), and `tracker.py due` every morning.
 ```cron
 # weekdays at 8:30
 30 8 * * 1-5 cd /path/to/simple-job-seeker/server && python3 queue_agent.py > /dev/null 2>> cron.log
+# daily at 7:00: re-check archived postings, mark the ones taken down
+0 7 * * * cd /path/to/simple-job-seeker/server && python3 queue_agent.py --recheck >> cron.log 2>&1
 ```
 
 The queue lands in `queues/` either way, so you can read it whenever.
+
+`--recheck` re-visits archived postings on their own boards (never
+LinkedIn: those are skipped without a request, and a board redirect to
+LinkedIn isn't followed), one second apart. A 404/410 marks the posting
+expired; HN asks Algolia whether the comment still exists, and WWR counts
+a redirect to its homepage as gone. Anything else (403, 5xx, timeouts)
+just records the check. Expired jobs get an "expired" chip on queue cards,
+the saved posting and `/applications`, and sort last on the queue page.
 
 ## Tuning
 
@@ -126,6 +137,9 @@ Everything lives in `config.toml`:
 - `role_keywords` / `stack_keywords` / `exclude_keywords` — scoring
 - `people_roles` — who to look for (recruiters, EMs, heads of eng…)
 - `brazil_friendly_only` — set `false` to see everything
+- `[expiry]` — `--recheck` limits: `max_checks` (50) requests per run,
+  skip postings archived less than `min_age_days` (2) ago, and don't
+  re-check one within `recheck_days` (3).
 - `[gates]` — reject postings you can't be hired for, before any LLM call.
   Delete the table to turn them off. Each build prints
   `[gate] rejected N (language X, eligibility Y)` to stderr.

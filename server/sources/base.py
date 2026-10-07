@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -29,10 +31,52 @@ class Job:
         return f"{self.source}:{self.url}"
 
 
+def is_linkedin(url: str) -> bool:
+    """linkedin.com or any subdomain. Nothing in this package requests one."""
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    return host == "linkedin.com" or host.endswith(".linkedin.com")
+
+
+class _NoLinkedInRedirect(urllib.request.HTTPRedirectHandler):
+    """Follow redirects, except to LinkedIn: stop and surface the 3xx."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if is_linkedin(newurl):
+            return None  # urllib then raises HTTPError(code)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_NoLinkedInRedirect)
+
+
 def _get(url: str, timeout: int = 20) -> bytes:
+    if is_linkedin(url):
+        raise ValueError(f"refusing to fetch a LinkedIn URL: {url}")
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with _OPENER.open(req, timeout=timeout) as resp:
         return resp.read()
+
+
+def http_probe(url: str, timeout: int = 20) -> tuple[bool | None, str]:
+    """GET the posting: (verdict, final URL after redirects). 404/410 means
+    gone (False), 2xx live (True), anything else (403, 5xx, timeout, a
+    refused LinkedIn redirect) None, "can't tell". A LinkedIn URL is never
+    requested."""
+    if is_linkedin(url) or not url.startswith(("http://", "https://")):
+        return None, url
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with _OPENER.open(req, timeout=timeout) as resp:
+            return (True if 200 <= resp.status < 300 else None), resp.geturl()
+    except urllib.error.HTTPError as e:
+        return (False if e.code in (404, 410) else None), url
+    except (OSError, ValueError):  # URLError, timeouts, bad URLs
+        return None, url
+
+
+def http_is_live(url: str) -> bool | None:
+    """Default liveness check for a board: `http_probe`'s verdict."""
+    return http_probe(url)[0]
 
 
 class _TextExtractor(HTMLParser):

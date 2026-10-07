@@ -41,12 +41,18 @@ component (e.g. `extension/`).
   (archived in `postings`) and `description` to `full_text[:2000]`, the
   slice the LLM sees. `sources/__init__.py` is the facade (`REGISTRY` +
   `collect_jobs`, which drives enabled sources and turns a dead board into
-  a warning, not a crash). Add a board by dropping a module here and
-  registering it.
+  a warning, not a crash; `LIVENESS`, each board's `is_live(url) -> bool |
+  None` for the expiry check — `http_is_live` by default (404/410 gone),
+  `hn.is_live` asks Algolia, `wwr.is_live` treats a redirect off
+  `/remote-jobs/` as gone). `base.py`'s `is_linkedin` guards every request:
+  `_get` refuses LinkedIn hosts, `http_probe` returns None for them without
+  a request, and the shared opener won't follow a redirect to LinkedIn.
+  Add a board by dropping a module here and registering it.
 - queue_agent.py — the CLI entrypoint. Runs as `python queue_agent.py`
   (kept a module, not a package, so cron/docs invocation is unchanged);
   holds `main` only (collect → select → optional re-rank → render →
-  persist, plus the `queues/<date>.md` artifact) and imports its pieces
+  persist, plus the `queues/<date>.md` artifact; `--recheck` runs
+  `pipeline.recheck` instead and exits) and imports its pieces
   directly from `pipeline`/`db`/`utils` — no facade to keep in sync.
 - pipeline/ — the stages between the boards and the daily queue, one concern
   per module: `gates.py` (`check_gates`: the `[gates]` language and
@@ -72,8 +78,14 @@ component (e.g. `extension/`).
   `/api/rate` via `score_job` + `judge_fit` and persists anything that
   clears the bar via `db.save_queue`, same as `build_queue` does for
   board-sourced jobs; a gated job skips `judge_fit` and is never queued);
-  `links.py` (`build_links`: LinkedIn people-search + Google x-ray URLs —
-  URLs only, the click is human); `render.py`
+  `expiry.py` (`recheck`: archived postings that aren't expired, are at
+  least `min_age_days` old and weren't checked within `recheck_days`, least
+  recently checked first, up to `max_checks`, 1 s apart, through the
+  source's `LIVENESS` check; False sets `postings.expired_at`, anything
+  else only `checked_at`; sources missing from LIVENESS, like the
+  extension's LinkedIn items, are never selected); `links.py`
+  (`build_links`: LinkedIn people-search + Google x-ray URLs — URLs only,
+  the click is human); `render.py`
   (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
   `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
@@ -135,7 +147,10 @@ component (e.g. `extension/`).
   form for roles applied to outside the queue (`POST /apply` with company
   + role), and on `/due` a "gone quiet" list plus a two-step no-response
   sweep (`/due?sweep=confirm`, then `POST /applications/sweep`). Quiet
-  applications add to the Due tab's badge (`layout.page`). The `/`
+  applications add to the Due tab's badge (`layout.page`). Expired
+  postings (`postings.expired_at`, via `ITEM_SELECT` and
+  `pages/applications.py`'s `expired_on`) get an "expired" chip on queue
+  cards, `/posting` and `/applications`, and sort last on the queue. The `/`
   queue page uses htmx (vendored at
   `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
   webapp still makes no outbound browser requests) for in-place updates:
@@ -147,7 +162,8 @@ component (e.g. `extension/`).
   (`GET /note-status`, `GET /build-status`) instead of the old blanket
   `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, gates, targets,
-  resume, applications, llm provider, ollama, openai, extension token).
+  resume, expiry, applications, llm provider, ollama, openai, extension
+  token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

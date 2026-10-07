@@ -1,9 +1,28 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
 
 from .base import Job, _get, strip_html
+
+def is_live(url: str) -> bool | None:
+    """A Who-is-hiring comment is gone when Algolia has no text for it
+    (deleted, flagged or dead). The job itself may have closed while the
+    comment stays up; that reads as live."""
+    query = urllib.parse.urlsplit(url).query
+    item_id = urllib.parse.parse_qs(query).get("id", [""])[0]
+    if not item_id.isdigit():
+        return None
+    try:
+        item = json.loads(_get(f"https://hn.algolia.com/api/v1/items/{item_id}"))
+    except urllib.error.HTTPError as e:
+        return False if e.code == 404 else None
+    except (OSError, ValueError):  # URLError, timeouts, bad JSON
+        return None
+    text = (item.get("text") or "").strip()
+    return bool(text) and text not in ("[deleted]", "[flagged]", "[dead]")
+
 
 def fetch(cfg: dict) -> list[Job]:
     q = urllib.parse.quote('"who is hiring"')

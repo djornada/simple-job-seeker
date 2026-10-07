@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+import urllib.parse
 import xml.etree.ElementTree as ET
 
-from .base import Job, _get, strip_html
+from .base import Job, _get, http_probe, strip_html
+
+def is_live(url: str) -> bool | None:
+    """WWR answers a missing job with a redirect to its homepage (200), so
+    ending up off /remote-jobs/ means the post is gone."""
+    verdict, final = http_probe(url)
+    path = urllib.parse.urlsplit(final).path
+    if verdict and not path.startswith("/remote-jobs/"):
+        return False
+    return verdict
+
 
 def fetch(cfg: dict) -> list[Job]:
     feeds = cfg["sources"].get("wwr_feeds", [])

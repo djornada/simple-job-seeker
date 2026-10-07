@@ -234,8 +234,11 @@ Depends on 5.1, which adds `postings.checked_at` and `expired_at`.
   means False, 2xx means True, anything else None. `hn` asks the Algolia
   `items/{id}` endpoint, where a deleted or empty comment means False.
 - **LinkedIn guard.** `base.py` refuses any URL whose host is `linkedin.com`
-  or a subdomain and returns None without a request. Items with source
-  `linkedin` (from the extension) are never selected.
+  or a subdomain and returns None without a request. The shared opener
+  also refuses to follow a redirect to LinkedIn (the 3xx reads as None),
+  and `_get` raises for LinkedIn hosts. Items from the extension
+  (`linkedin_jobs`, `linkedin_feed`) are never selected, since only
+  sources in `LIVENESS` are.
 - New `pipeline/expiry.py`, `recheck(conn, cfg)`. Candidates are postings
   that aren't expired, were archived at least `min_age_days` ago, and were
   never checked or checked longer ago than `recheck_days`. Least recently
@@ -254,6 +257,9 @@ Depends on 5.1, which adds `postings.checked_at` and `expired_at`.
   sort last on the queue page.
 - Boards that return 200 for a "this job is closed" page are out of scope
   until one is seen in practice. Per-source `is_live` leaves room for it.
+  Seen with WWR: a missing job redirects to its homepage with a 200, so
+  `wwr.is_live` treats ending up off `/remote-jobs/` as gone
+  (`base.http_probe` returns the final URL for this).
 
 ### 5.5 Weighted fit scoring (M3)
 

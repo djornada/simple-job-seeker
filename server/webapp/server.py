@@ -24,6 +24,7 @@ from .multipart import parse_multipart
 from .pages import (
     GET_ROUTES,
     ITEM_SELECT,
+    expired_on,
     get_build_status,
     note_block,
     render_app,
@@ -333,8 +334,9 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
+            expired = expired_on(conn, [row["uid"]]).get(row["uid"], "")
             conn.close()
-            self.respond(render_app(row, error))
+            self.respond(render_app(row, error, expired))
             return
         conn.close()
         back = "/due" if form.get("back", [""])[0] == "/due" else "/applications"

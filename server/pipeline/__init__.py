@@ -13,6 +13,8 @@ One concern per module (mirrors sources/ and db/):
 - rate.py    — `rate_jobs`: scores ad-hoc jobs/posts from the browser
   extension the same way (score_job + judge_fit) and persists anything
   that clears the bar into today's queue
+- expiry.py  — `recheck`: re-visit archived postings on their boards (never
+  LinkedIn) and mark the ones taken down
 - links.py   — `build_links`: LinkedIn people-search + Google x-ray URLs
 - render.py  — `render` (queue → markdown) and `show_stats`, for the CLI
 
@@ -23,6 +25,7 @@ sync; every dependency points at the concrete module that owns it.
 from __future__ import annotations
 
 from .build import build_queue
+from .expiry import recheck
 from .gates import check_gates
 from .links import build_links
 from .rate import rate_jobs
@@ -38,6 +41,6 @@ from .scoring import score_job
 from .select import select_queue
 
 __all__ = ["build_links", "build_queue", "check_gates", "draft_note",
-           "judge_fit", "load_profile_bits", "load_profile_text",
-           "rate_jobs", "render", "rerank_with_resume", "score_job",
+           "judge_fit", "load_profile_bits", "load_profile_text", "rate_jobs",
+           "recheck", "render", "rerank_with_resume", "score_job",
            "select_queue", "show_stats"]

@@ -17,6 +17,7 @@ Usage:
     python queue_agent.py --notes      # also draft connection notes via the LLM
     python queue_agent.py --dry-run    # don't persist state
     python queue_agent.py --stats      # show pipeline stats
+    python queue_agent.py --recheck    # mark archived postings that were taken down
 """
 
 from __future__ import annotations
@@ -26,7 +27,14 @@ import datetime as dt
 import sys
 
 from db import db_connect, save_queue
-from pipeline import build_links, build_queue, draft_note, render, show_stats
+from pipeline import (
+    build_links,
+    build_queue,
+    draft_note,
+    recheck,
+    render,
+    show_stats,
+)
 from utils import OUT_DIR, load_config
 
 
@@ -36,6 +44,8 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="don't persist state")
     ap.add_argument("--stats", action="store_true", help="show pipeline stats and exit")
     ap.add_argument("-n", type=int, default=None, help="override queue size")
+    ap.add_argument("--recheck", action="store_true",
+                    help="re-check archived postings, mark expired ones, and exit")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -43,6 +53,16 @@ def main() -> int:
 
     if args.stats:
         show_stats(conn)
+        return 0
+
+    if args.recheck:
+        result = recheck(conn, cfg)
+        for _, _, url, company, title in result["expired"]:
+            print(f"[expired] {company} — {title}  {url}")
+        n = sum(len(v) for v in result.values())
+        print(f"[recheck] checked {n}: {len(result['expired'])} expired, "
+              f"{len(result['live'])} live, {len(result['unknown'])} can't tell",
+              file=sys.stderr)
         return 0
 
     limit = args.n or cfg["targets"].get("per_day", 10)
