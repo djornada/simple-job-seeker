@@ -17,6 +17,8 @@ One concern per module (mirrors sources/ and db/):
   that clears the bar into today's queue
 - expiry.py  — `recheck`: re-visit archived postings on their boards (never
   LinkedIn) and mark the ones taken down
+- keywords.py — `normalize`/`alias_map`: skill names lower-cased, trimmed,
+  mapped through `[keywords].aliases` (the gaps page and keyword coverage)
 - links.py   — `build_links`: LinkedIn people-search + Google x-ray URLs
 - render.py  — `render` (queue → markdown) and `show_stats`, for the CLI
 

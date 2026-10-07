@@ -78,8 +78,10 @@ component (e.g. `extension/`).
   keep their 0-10 scale; the breakdown rides on `Job.fit_detail` into
   `queue_items.fit_json` and renders as a verdict chip + `<details>` on
   queue cards (`pages/queue.py`'s `_fit_block`) and as markdown lines;
-  `draft_note` writes sub-200-char connection notes, profile readers
-  included; with no profile or the backend down the pipeline stays
+  `keywords.py` (`alias_map`/`normalize`: lower-case, trim, collapse
+  whitespace, then `[keywords.aliases]`; shared by `/gaps` and keyword
+  coverage); `draft_note` writes sub-200-char connection notes, profile
+  readers included; with no profile or the backend down the pipeline stays
   keyword-only and notes return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed
   directly by both queue_agent.py's `main` and webapp's `build_worker`, so
@@ -126,8 +128,8 @@ component (e.g. `extension/`).
   (background build/note threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
   module per route — queue, board, applications, due, log, company,
-  posting, stats, profile — with GET_ROUTES in its facade; add a page by
-  dropping a module and registering it, same recipe as sources/),
+  posting, stats, gaps, profile — with GET_ROUTES in its facade; add a
+  page by dropping a module and registering it, same recipe as sources/),
   `server.py` (Handler + `main`). Every module
   imports what it needs straight from `pipeline`/`db`/`sources`/`utils`
   rather than through queue_agent.py — the two adapters (CLI and web UI) sit
@@ -160,7 +162,12 @@ component (e.g. `extension/`).
   applications add to the Due tab's badge (`layout.page`). Expired
   postings (`postings.expired_at`, via `ITEM_SELECT` and
   `pages/applications.py`'s `expired_on`) get an "expired" chip on queue
-  cards, `/posting` and `/applications`, and sort last on the queue. The `/`
+  cards, `/posting` and `/applications`, and sort last on the queue.
+  `/gaps` aggregates `fit_json.missing_skills` over `?days=30|90|all`
+  (latest row per uid, so a re-queued job counts once): postings, weighted
+  score (sum of 1 − overall/100), last seen, three example companies;
+  skills in the profile's `skills_json` are dropped after the same
+  normalization. The `/`
   queue page uses htmx (vendored at
   `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
   webapp still makes no outbound browser requests) for in-place updates:
@@ -172,8 +179,8 @@ component (e.g. `extension/`).
   (`GET /note-status`, `GET /build-status`) instead of the old blanket
   `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, gates, targets,
-  resume + resume.weights, expiry, applications, llm provider, ollama,
-  openai, extension token).
+  resume + resume.weights, keywords.aliases, expiry, applications, llm
+  provider, ollama, openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

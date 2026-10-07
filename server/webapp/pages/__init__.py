@@ -9,6 +9,7 @@ from .applications import expired_on, page_applications, render_app
 from .board import page_board
 from .company import page_company
 from .due import page_due
+from .gaps import page_gaps
 from .log import page_log
 from .posting import page_posting
 from .profile import page_profile
@@ -31,6 +32,7 @@ GET_ROUTES = {
     "/company": page_company,
     "/posting": page_posting,
     "/stats": page_stats,
+    "/gaps": page_gaps,
     "/profile": page_profile,
     "/note-status": get_note_status,
     "/build-status": get_build_status,
@@ -38,5 +40,6 @@ GET_ROUTES = {
 
 __all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
            "note_block", "page_applications", "page_board", "page_company",
-           "page_due", "page_log", "page_posting", "page_profile",
-           "page_queue", "page_stats", "render_app", "render_item"]
+           "page_due", "page_gaps", "page_log", "page_posting",
+           "page_profile", "page_queue", "page_stats", "render_app",
+           "render_item"]

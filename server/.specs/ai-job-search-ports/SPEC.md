@@ -324,6 +324,10 @@ Depends on 5.5 (`missing_skills`).
   (case-insensitive match).
 - Sorted by weighted score. The page has an empty state until 5.5 data
   exists.
+- As built: normalization lives in `pipeline/keywords.py` (`alias_map`,
+  `normalize`) for 5.7 to reuse, and the aliases are a
+  `[keywords.aliases]` table rather than an inline one. A uid queued on
+  several days counts once (its latest row).
 
 ### 5.7 Résumé keyword coverage (M3)
 

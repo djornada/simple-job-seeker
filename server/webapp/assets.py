@@ -21,7 +21,7 @@ header.top { display: flex; align-items: baseline; gap: 24px;
   padding: 18px 0 14px; border-bottom: 1px solid var(--line); }
 .wordmark { font-family: var(--mono); font-weight: 700; letter-spacing: -0.5px; }
 .wordmark a { color: var(--ink); text-decoration: none; }
-nav.tabs { display: flex; gap: 18px; font-size: 14px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; }
 nav.tabs a { text-decoration: none; color: var(--muted); padding: 2px 0; }
 nav.tabs a:hover { color: var(--ink); }
 nav.tabs a.active { color: var(--ink); box-shadow: 0 2px 0 var(--accent); }
@@ -161,7 +161,7 @@ button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
 
 TABS = [("/", "Queue"), ("/board", "Board"), ("/applications", "Applications"),
         ("/due", "Due"), ("/log", "Log"), ("/stats", "Stats"),
-        ("/profile", "Résumé")]
+        ("/gaps", "Gaps"), ("/profile", "Résumé")]
 
 # favicon lives at the project root; loaded once, served as static bytes
 try:

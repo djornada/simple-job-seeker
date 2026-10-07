@@ -157,7 +157,14 @@ Everything lives in `config.toml`:
 
   Queue cards show the verdict chip, and **fit breakdown** expands the
   per-dimension scores, strengths, gaps and missing skills; the markdown
-  queue lists the same.
+  queue lists the same. The web UI's **Gaps** tab (`/gaps`) adds up the
+  missing skills across postings (last 30 or 90 days, or all time): how
+  many postings flagged each one, a weighted score that counts gaps from
+  weaker fits more (sum of 1 − overall/100), when it was last seen and
+  example companies. Skills already in your imported profile are left out.
+- `[keywords.aliases]` — spellings to merge, `variant = "canonical"`
+  (`k8s = "kubernetes"`, `"next.js" = "nextjs"`), case-insensitive. Used by
+  `/gaps`, including when matching against your profile's skills.
 - `[expiry]` — `--recheck` limits: `max_checks` (50) requests per run,
   skip postings archived less than `min_age_days` (2) ago, and don't
   re-check one within `recheck_days` (3).

@@ -76,6 +76,19 @@ experience = 25
 culture = 15
 career = 30
 
+# Skill-name aliases, variant = canonical, used to merge spellings on the
+# /gaps page (and by keyword coverage). Matching is case-insensitive.
+[keywords.aliases]
+k8s = "kubernetes"
+js = "javascript"
+ts = "typescript"
+postgres = "postgresql"
+"next.js" = "nextjs"
+"node.js" = "node"
+nodejs = "node"
+"react.js" = "react"
+reactjs = "react"
+
 # Expired-posting check (python3 queue_agent.py --recheck). Re-visits the
 # archived postings' own URLs on the boards, never LinkedIn, one second
 # apart; a 404/410 marks the posting expired.
