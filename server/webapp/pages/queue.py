@@ -61,6 +61,27 @@ def note_block(date: str, uid: str, note: str | None, pending: bool,
     return f'<div class="notewrap"{poll}>{inner}</div>'
 
 
+def _fit_block(detail: dict, note: str) -> str:
+    """Verdict chip + fit line, and a <details> with the per-dimension
+    scores, strengths, gaps and missing skills (pipeline/fit.py)."""
+    v = detail.get("verdict", "")
+    chip = (f'<span class="verdict v-{esc(v)}">{esc(v)} '
+            f'{detail.get("overall", 0):g}</span>')
+    dims = " · ".join(f"{esc(d)} {s:g}"
+                      for d, s in detail.get("dimensions", {}).items())
+    parts = [f'<p class="dims">{dims}</p>'] if dims else []
+    for key, label in (("strengths", "strengths"), ("gaps", "gaps")):
+        if detail.get(key):
+            items = "".join(f"<li>{esc(x)}</li>" for x in detail[key])
+            parts.append(f'<p class="dims">{label}</p><ul>{items}</ul>')
+    if detail.get("missing_skills"):
+        parts.append(f'<p class="dims">missing: '
+                     f'{esc(", ".join(detail["missing_skills"]))}</p>')
+    more = (f'<details class="fitmore"><summary>fit breakdown</summary>'
+            f'{"".join(parts)}</details>') if parts else ""
+    return f'<p class="fit">{chip}{esc(note)}</p>{more}'
+
+
 def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
                 failed: bool) -> str:
     """One queue target's card — shared by the full page render and the
@@ -94,7 +115,10 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
                          f'post down">expired {esc(r["expired_at"][:10])}</span>')
 
     fit_html = ""
-    if r["fit_note"]:
+    detail = json.loads(r["fit_json"]) if r["fit_json"] else {}
+    if detail:
+        fit_html = _fit_block(detail, r["fit_note"] or "")
+    elif r["fit_note"]:
         band = (f'<span class="llm">fit {r["llm_score"]:g}/10</span>'
                 if r["llm_score"] is not None else "")
         fit_html = f'<p class="fit">{band}{esc(r["fit_note"])}</p>'

@@ -61,7 +61,20 @@ region_only = [
 # or Ollama down, the pipeline stays keyword-only.
 [resume]
 shortlist = 30       # jobs sent to LLM re-rank after keyword gate
-min_llm_score = 5    # drop jobs the model scores below this (0 disables)
+min_llm_score = 5    # drop jobs scoring below this, 0-10 (0 disables)
+# Optional: what you want next, so the "career" dimension has something to
+# judge against (otherwise the model reads your profile's trajectory).
+# goals = "Staff-level frontend or full-stack role, product company, async remote"
+
+# The model scores each job 0-100 on four dimensions; the overall score is
+# their weighted average (computed here, not by the model), and the 0-10
+# score above is overall / 10. Verdicts: strong >= 75, good >= 60,
+# moderate >= 45, weak >= 30, poor below.
+[resume.weights]
+skills = 30
+experience = 25
+culture = 15
+career = 30
 
 # Expired-posting check (python3 queue_agent.py --recheck). Re-visits the
 # archived postings' own URLs on the boards, never LinkedIn, one second
@@ -86,11 +99,11 @@ port = 3000
 # Which backend drives the re-rank and connection-note stages.
 #   "ollama" — local model (default, private, no API key)
 #   "openai" — any OpenAI-compatible chat endpoint (e.g. NVIDIA NIM)
-provider = "openai"
+provider = "ollama"
 
 [ollama]
 url = "http://localhost:11434"
-model = "qwen3.5"
+model = "qwen3:14b"
 
 # OpenAI-compatible endpoint, used when [llm].provider = "openai".
 # The API key is read from the named environment variable, never committed.

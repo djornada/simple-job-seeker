@@ -68,8 +68,18 @@ component (e.g. `extension/`).
   `resume.py` (resume-in-the-loop over the `llm/` facade —
   `rerank_with_resume` re-scores the keyword-gated shortlist by real fit,
   `judge_fit` is the single-job primitive it batches over (also used by
-  rate.py), `draft_note` writes sub-200-char connection notes, profile
-  readers included; with no profile or the backend down the pipeline stays
+  rate.py): the model scores skills/experience/culture/career 0-100 plus
+  strengths, gaps and missing_skills (`[resume].goals` feeds career);
+  `fit.py` parses that defensively (`parse_json_object` tolerates fences
+  and prose; a bad dimension is dropped and weights renormalized; a legacy
+  0-10 `score` is still read) and weighs it with `[resume.weights]` into
+  overall + verdict, never trusting the model's arithmetic. `llm_score` =
+  overall / 10, so `min_llm_score`, /stats bands, render.py and the popup
+  keep their 0-10 scale; the breakdown rides on `Job.fit_detail` into
+  `queue_items.fit_json` and renders as a verdict chip + `<details>` on
+  queue cards (`pages/queue.py`'s `_fit_block`) and as markdown lines;
+  `draft_note` writes sub-200-char connection notes, profile readers
+  included; with no profile or the backend down the pipeline stays
   keyword-only and notes return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed
   directly by both queue_agent.py's `main` and webapp's `build_worker`, so
@@ -162,8 +172,8 @@ component (e.g. `extension/`).
   (`GET /note-status`, `GET /build-status`) instead of the old blanket
   `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, gates, targets,
-  resume, expiry, applications, llm provider, ollama, openai, extension
-  token).
+  resume + resume.weights, expiry, applications, llm provider, ollama,
+  openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

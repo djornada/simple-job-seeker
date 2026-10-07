@@ -300,6 +300,12 @@ Each dimension is scored 0–100.
   bullets.
 - Still one LLM call per job. Check JSON compliance on both the Ollama
   (qwen3) and NIM backends.
+- As built: `pipeline/fit.py` holds the parsing and weighting
+  (`score_reply`, `parse_json_object`, which also accepts a reply wrapped
+  in code fences or prose); `judge_fit` returns `{"score", "fit",
+  "detail"}`, with `detail` stored in `fit_json`. `llm_score` is exactly
+  overall / 10, not rounded. Checked on Ollama `qwen3:8b` and on NIM with
+  `openai/gpt-oss-20b`; `z-ai/glm-5.2` was retired on NIM in 2026-08.
 
 ### 5.6 Skill gaps page (M3)
 

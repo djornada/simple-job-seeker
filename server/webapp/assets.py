@@ -81,6 +81,19 @@ p.fit { margin: 6px 0 0; font-size: 13px; color: var(--accent-ink);
 p.flags { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .flag { font-size: 12px; background: var(--amber-bg); color: var(--amber);
   border-radius: 8px; padding: 1px 8px; }
+.verdict { font-family: var(--mono); font-size: 11px; border-radius: 8px;
+  padding: 0 6px; margin-right: 8px; background: var(--paper);
+  color: var(--muted); border: 1px solid var(--line); }
+.v-strong, .v-good { background: var(--accent); color: #fff;
+  border-color: var(--accent); }
+.v-moderate { color: var(--accent-ink); }
+.v-weak, .v-poor { background: var(--amber-bg); color: var(--amber);
+  border-color: var(--amber-bg); }
+details.fitmore { margin: 4px 0 0; font-size: 12.5px; color: var(--ink); }
+details.fitmore summary { cursor: pointer; color: var(--muted); }
+details.fitmore ul { margin: 2px 0 6px; padding-left: 18px; }
+p.dims { margin: 4px 0 0; font-family: var(--mono); font-size: 11.5px;
+  color: var(--muted); }
 p.fit .llm { font-family: var(--mono); font-size: 11px; color: var(--muted);
   margin-right: 6px; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 14px;

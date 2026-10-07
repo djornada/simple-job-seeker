@@ -29,6 +29,7 @@ def rate_jobs(conn: sqlite3.Connection, jobs: list[Job], cfg: dict) -> list[Job]
             if result is not None:
                 job.llm_score = result.get("score", 0.0)
                 job.fit_note = result.get("fit", "")
+                job.fit_detail = result.get("detail", {})
 
     queued = [j for j in jobs if not j.gate
               and (j.score > 0 or (j.llm_score or 0) >= floor)]

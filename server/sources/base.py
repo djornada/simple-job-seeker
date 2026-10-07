@@ -23,6 +23,7 @@ class Job:
     full_text: str = ""    # untruncated, archived in `postings`
     llm_score: float | None = None
     fit_note: str = ""
+    fit_detail: dict = field(default_factory=dict)  # see pipeline/fit.py
     flags: list[str] = field(default_factory=list)  # gate notes, persisted
     gate: str = ""  # "language"/"eligibility" when a gate rejected it
 

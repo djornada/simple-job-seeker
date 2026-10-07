@@ -13,6 +13,8 @@ import llm
 from db import db_connect
 from sources import Job
 
+from .fit import parse_json_object, score_reply
+
 
 def load_profile_text(conn: sqlite3.Connection) -> str | None:
     """Compact resume text for the LLM re-rank, or None if never imported."""
@@ -67,28 +69,37 @@ def draft_note(job: Job, cfg: dict) -> str | None:
 
 
 def judge_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
-    """Score one job against the profile. None = LLM backend unreachable."""
+    """Score one job against the profile on four 0-100 dimensions; Python
+    weighs them (see fit.py). Returns {"score": 0-10, "fit", "detail"},
+    {} if the reply can't be scored, None if the LLM backend is unreachable."""
+    goals = str(cfg.get("resume", {}).get("goals", "")).strip()
+    career = ("the candidate's stated goals below" if goals
+              else "the trajectory in the profile")
     prompt = (
-        "Rate how well a remote job fits a candidate, 0-10, based only on the "
-        "profile and the posting. Reply as JSON only: "
-        '{"score": <integer 0-10>, "fit": "<one line: why it fits / what to '
-        'emphasize>"}.\n\n'
+        "Judge how well a remote job fits a candidate, based only on the "
+        "profile and the posting. Score each dimension from 0 to 100:\n"
+        "- skills: the stack and skills the posting asks for vs the candidate's\n"
+        "- experience: seniority, scope and domain vs what the role needs\n"
+        "- culture: work style, company stage, remote setup\n"
+        "- career: whether the role moves the candidate forward, judged "
+        f"against {career}\n"
+        "Don't compute an overall score. Reply as JSON only:\n"
+        '{"skills": <0-100>, "experience": <0-100>, "culture": <0-100>, '
+        '"career": <0-100>, "strengths": ["<up to 3 short lines grounded in '
+        'the posting>"], "gaps": ["<up to 3 short lines>"], "missing_skills": '
+        '["<up to 5 short skill names the posting wants and the profile '
+        'lacks, e.g. Kubernetes>"], "fit": "<one line: why it fits / what to '
+        'emphasize>"}\n\n'
         f"CANDIDATE PROFILE:\n{profile_text}\n\n"
-        f"JOB\nTitle: {job.title}\nCompany: {job.company}\n"
+        + (f"CAREER GOALS:\n{goals}\n\n" if goals else "")
+        + f"JOB\nTitle: {job.title}\nCompany: {job.company}\n"
         f"Description: {job.description}\n"
     )
     raw = llm.generate(cfg, prompt, fmt="json")
     if raw is None:
         return None
-    try:
-        data = json.loads(llm.strip_think(raw))
-    except (json.JSONDecodeError, TypeError):
-        return {}
-    try:
-        score = float(data.get("score", 0))
-    except (TypeError, ValueError):
-        score = 0.0
-    return {"score": score, "fit": str(data.get("fit", "")).strip()}
+    data = parse_json_object(llm.strip_think(raw))
+    return score_reply(data, cfg) if data is not None else {}
 
 
 def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Job]:
@@ -112,6 +123,7 @@ def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Jo
             return jobs
         job.llm_score = result.get("score", 0.0)
         job.fit_note = result.get("fit", "")
+        job.fit_detail = result.get("detail", {})
         scored.append(job)
 
     if floor:

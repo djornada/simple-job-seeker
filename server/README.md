@@ -36,6 +36,8 @@ Each run:
    with `[gates]` set, postings you can't be hired for (language,
    citizenship, region-only)
 4. Skips jobs already seen and companies queued in the last 30 days (SQLite)
+   and, with a résumé imported, has the LLM judge the shortlist's fit (see
+   "Résumé fit" under Tuning)
 5. Prints the queue and saves it to `queues/YYYY-MM-DD.md`
 6. Archives each queued job's full posting text in `state.db`, so it
    survives the post being taken down. The web UI's queue cards link to
@@ -137,6 +139,25 @@ Everything lives in `config.toml`:
 - `role_keywords` / `stack_keywords` / `exclude_keywords` — scoring
 - `people_roles` — who to look for (recruiters, EMs, heads of eng…)
 - `brazil_friendly_only` — set `false` to see everything
+- `[resume]` — résumé fit, once you've imported your LinkedIn export
+  (`/profile` page or `python3 -m profile import <export.zip>`). The LLM
+  scores each shortlisted job 0–100 on four dimensions: **skills**,
+  **experience**, **culture** and **career**, and lists up to 3 strengths,
+  3 gaps and 5 missing skills. The overall score is their weighted average,
+  computed by the pipeline rather than the model, with weights from
+  `[resume.weights]` (30 / 25 / 15 / 30 by default). Verdict: strong ≥ 75,
+  good ≥ 60, moderate ≥ 45, weak ≥ 30, poor below.
+  - `shortlist` — how many keyword-ranked jobs get judged (one LLM call each)
+  - `min_llm_score` — drop jobs whose overall / 10 is below this (0 disables)
+  - `goals` — optional free text about what you want next; the career
+    dimension judges against it (otherwise against your profile's
+    trajectory)
+  - A reply missing a dimension is scored on the rest, reweighted; one
+    that can't be parsed leaves the job unscored.
+
+  Queue cards show the verdict chip, and **fit breakdown** expands the
+  per-dimension scores, strengths, gaps and missing skills; the markdown
+  queue lists the same.
 - `[expiry]` — `--recheck` limits: `max_checks` (50) requests per run,
   skip postings archived less than `min_age_days` (2) ago, and don't
   re-check one within `recheck_days` (3).

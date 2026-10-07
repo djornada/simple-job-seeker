@@ -1,6 +1,8 @@
 """The pipeline stages between the job boards and the daily queue.
 
 One concern per module (mirrors sources/ and db/):
+- fit.py     — weighted fit framework: `score_reply` weighs the LLM's
+  four 0-100 dimensions with `[resume.weights]` into overall + verdict
 - gates.py   — `check_gates`: language and eligibility gates (`[gates]`)
 - scoring.py — `score_job` keyword scoring (gates first, role keyword
   required, stack adds)

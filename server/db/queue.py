@@ -36,15 +36,17 @@ def save_queue(conn: sqlite3.Connection, queue: list[Job],
         conn.execute("""
             INSERT INTO queue_items
                 (date, uid, source, company, title, url, location, score, note,
-                 description, fit_note, llm_score, flags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 description, fit_note, llm_score, flags, fit_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(date, uid) DO UPDATE SET
                 note = COALESCE(queue_items.note, excluded.note),
                 fit_note = COALESCE(excluded.fit_note, queue_items.fit_note),
                 llm_score = COALESCE(excluded.llm_score, queue_items.llm_score),
-                flags = COALESCE(excluded.flags, queue_items.flags)
+                flags = COALESCE(excluded.flags, queue_items.flags),
+                fit_json = COALESCE(excluded.fit_json, queue_items.fit_json)
         """, (today, j.uid, j.source, j.company, j.title, j.url,
               j.location, j.score, notes.get(j.uid),
               j.description, j.fit_note or None, j.llm_score,
-              json.dumps(j.flags) if j.flags else None))
+              json.dumps(j.flags) if j.flags else None,
+              json.dumps(j.fit_detail) if j.fit_detail else None))
     conn.commit()
