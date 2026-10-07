@@ -36,6 +36,7 @@ def db_connect() -> sqlite3.Connection:
             llm_score REAL,
             flags TEXT,
             fit_json TEXT,
+            coverage_json TEXT,
             PRIMARY KEY (date, uid)
         );
         CREATE TABLE IF NOT EXISTS profile (
@@ -48,7 +49,7 @@ def db_connect() -> sqlite3.Connection:
     """)
     conn.executescript(POSTINGS_SCHEMA)
     for col in ("description TEXT", "fit_note TEXT", "llm_score REAL",
-                "flags TEXT", "fit_json TEXT"):
+                "flags TEXT", "fit_json TEXT", "coverage_json TEXT"):
         try:
             conn.execute(f"ALTER TABLE queue_items ADD COLUMN {col}")
         except sqlite3.OperationalError:

@@ -59,6 +59,13 @@ why it fits / what to emphasize`).
 write one (it appears with a live character count, capped at 200). Notes draft
 in the background — the card shows "drafting note…" until it's ready.
 
+**Keyword coverage:** with a saved posting and an imported résumé, click
+**Check keywords** to list the skills the posting asks for and whether your
+résumé covers them (`covered`, `synonym`, `missing`), missing required ones
+first. It runs in the background like a note draft ("checking keywords…"),
+then shows the table in place. See
+[Résumé matching](resume-matching.md#4-keyword-coverage-per-posting).
+
 **The tick box** on the left marks the target *worked* — see
 [Concepts → The checkbox](concepts.md#the-checkbox). The loop:
 

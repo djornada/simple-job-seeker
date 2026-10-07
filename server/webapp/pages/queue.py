@@ -1,4 +1,5 @@
-"""`/` — the daily queue: check off targets, draft notes, rebuild."""
+"""`/` — the daily queue: check off targets, draft notes, check keyword
+coverage, rebuild."""
 from __future__ import annotations
 
 import datetime as dt
@@ -14,6 +15,9 @@ from ..layout import page
 from ..state import (
     BUILD,
     BUILD_LOCK,
+    COVERAGE_FAILED,
+    COVERAGE_LOCK,
+    COVERAGE_PENDING,
     DATE_RE,
     NOTES_FAILED,
     NOTES_LOCK,
@@ -24,11 +28,13 @@ from ..state import (
 
 
 # Queue rows plus whether the posting text is archived, when it was found
-# expired, and the application made from it, if any (the card shows all).
+# expired, the application made from it, if any, and whether a résumé is
+# imported (the card shows all; the last two gate "Check keywords").
 ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid) "
                "AS archived, (SELECT p.expired_at FROM postings p "
                "WHERE p.uid = q.uid) AS expired_at, (SELECT a.id FROM "
-               "applications a WHERE a.uid = q.uid LIMIT 1) AS app_id "
+               "applications a WHERE a.uid = q.uid LIMIT 1) AS app_id, "
+               "EXISTS(SELECT 1 FROM profile) AS profiled "
                "FROM queue_items q")
 
 
@@ -59,6 +65,66 @@ def note_block(date: str, uid: str, note: str | None, pending: bool,
         qs = urllib.parse.urlencode({"date": date, "uid": uid})
         poll = f' hx-get="/note-status?{qs}" hx-trigger="every 3s" hx-swap="outerHTML"'
     return f'<div class="notewrap"{poll}>{inner}</div>'
+
+
+def coverage_state(uid: str) -> tuple[bool, str]:
+    """(check in flight, why the last one failed or "") for one item."""
+    with COVERAGE_LOCK:
+        return uid in COVERAGE_PENDING, COVERAGE_FAILED.get(uid, "")
+
+
+def coverage_block(date: str, uid: str, coverage: dict, can_check: bool,
+                   pending: bool, error: str, show: bool = False) -> str:
+    """Keyword coverage for one item (pipeline/coverage.py): the terms
+    table once checked, a pending line while the worker runs, the last
+    failure, and a check button when there's a saved posting and a résumé.
+
+    Polls `/coverage-status` while pending, like `note_block`; `show`
+    opens the table (set by the poll response that delivers it).
+    """
+    form = ""
+    if can_check:
+        label = ("Try again" if error else
+                 "Check again" if coverage else "Check keywords")
+        form = (f'<form method="post" action="/coverage" hx-post="/coverage" '
+                f'hx-target="closest .covwrap" hx-swap="outerHTML" '
+                f'style="margin:6px 0 0">'
+                f'<input type="hidden" name="date" value="{esc(date)}">'
+                f'<input type="hidden" name="uid" value="{esc(uid)}">'
+                f'<button class="ghost" title="keywords the posting asks for '
+                f'vs your résumé">{label}</button></form>')
+    if pending:
+        inner = '<p class="note pending">checking keywords…</p>'
+    else:
+        inner = (f'<p class="note failed">keyword check failed — {esc(error)}'
+                 f'</p>' if error else "")
+        terms = coverage.get("terms", [])
+        if terms:
+            counts = []
+            for kind in ("required", "preferred"):
+                rows = [t for t in terms if t["kind"] == kind]
+                if rows:
+                    hit = sum(t["status"] != "missing" for t in rows)
+                    counts.append(f"{hit}/{len(rows)} {kind}")
+            trs = "".join(
+                f'<tr><td>{esc(t["term"])}</td>'
+                f'<td class="kind">{esc(t["kind"])}</td>'
+                f'<td><span class="kw kw-{esc(t["status"])}">'
+                f'{esc(t["status"])}</span></td></tr>' for t in terms)
+            inner += (f'<details class="fitmore"{" open" if show else ""}>'
+                      f'<summary>keyword coverage: {", ".join(counts)}'
+                      f'</summary><table class="kwtab">{trs}</table>{form}'
+                      f'</details>')
+        else:
+            inner += form
+    if not inner:
+        return ""
+    poll = ""
+    if pending:
+        qs = urllib.parse.urlencode({"date": date, "uid": uid})
+        poll = (f' hx-get="/coverage-status?{qs}" hx-trigger="every 3s" '
+                'hx-swap="outerHTML"')
+    return f'<div class="covwrap"{poll}>{inner}</div>'
 
 
 def _fit_block(detail: dict, note: str) -> str:
@@ -122,6 +188,11 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
         band = (f'<span class="llm">fit {r["llm_score"]:g}/10</span>'
                 if r["llm_score"] is not None else "")
         fit_html = f'<p class="fit">{band}{esc(r["fit_note"])}</p>'
+    coverage = json.loads(r["coverage_json"]) if r["coverage_json"] else {}
+    cov_pending, cov_error = coverage_state(r["uid"])
+    coverage_html = coverage_block(
+        date, r["uid"], coverage, bool(r["archived"] and r["profiled"]),
+        cov_pending, cov_error)
     flags = json.loads(r["flags"]) if r["flags"] else []
     flags_html = (
         '<p class="flags">'
@@ -144,6 +215,7 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
     <p class="linkrow">{' '.join(linkrow)}</p>
     {fit_html}
     {flags_html}
+    {coverage_html}
     {note_block(date, r['uid'], r['note'], pending, failed)}
   </div>
 </article>"""
@@ -207,6 +279,24 @@ def get_note_status(params: dict[str, list[str]]) -> str:
     with NOTES_LOCK:
         pending, failed = uid in NOTES_PENDING, uid in NOTES_FAILED
     return note_block(date, uid, row["note"], pending, failed)
+
+
+def get_coverage_status(params: dict[str, list[str]]) -> str:
+    """`/coverage-status` — polled by `coverage_block` while a check runs;
+    also what `POST /coverage` returns directly to an htmx caller."""
+    date = params.get("date", [""])[0]
+    uid = params.get("uid", [""])[0]
+    conn = db()
+    row = conn.execute(f"{ITEM_SELECT} WHERE date = ? AND uid = ?",
+                       (date, uid)).fetchone()
+    conn.close()
+    if row is None:
+        return ""  # item gone; empty swap, polling stops naturally
+    coverage = json.loads(row["coverage_json"]) if row["coverage_json"] else {}
+    pending, error = coverage_state(uid)
+    return coverage_block(date, uid, coverage,
+                          bool(row["archived"] and row["profiled"]),
+                          pending, error, show=True)
 
 
 def get_build_status(params: dict[str, list[str]]) -> str:

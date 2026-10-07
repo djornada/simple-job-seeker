@@ -26,12 +26,23 @@ from .pages import (
     ITEM_SELECT,
     expired_on,
     get_build_status,
+    get_coverage_status,
     note_block,
     render_app,
     render_item,
 )
-from .state import BUILD, BUILD_LOCK, NOTES_FAILED, NOTES_LOCK, NOTES_PENDING, db
-from .workers import build_worker, note_worker
+from .state import (
+    BUILD,
+    BUILD_LOCK,
+    COVERAGE_FAILED,
+    COVERAGE_LOCK,
+    COVERAGE_PENDING,
+    NOTES_FAILED,
+    NOTES_LOCK,
+    NOTES_PENDING,
+    db,
+)
+from .workers import build_worker, coverage_worker, note_worker
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -115,6 +126,8 @@ class Handler(BaseHTTPRequestHandler):
             self.post_toggle(form)
         elif path == "/note":
             self.post_note(form)
+        elif path == "/coverage":
+            self.post_coverage(form)
         elif path == "/add":
             self.post_add(form)
         elif path == "/done":
@@ -254,6 +267,24 @@ class Handler(BaseHTTPRequestHandler):
                                  daemon=True).start()
         if uid and self.headers.get("HX-Request") == "true":
             self.respond(note_block(date, uid, None, True, False))
+            return
+        self.redirect(f"/?date={urllib.parse.quote(date)}")
+
+    def post_coverage(self, form: dict[str, list[str]]) -> None:
+        """"Check keywords": start a background coverage check (the
+        `/note` pattern); htmx gets the pending block, which polls."""
+        date = form.get("date", [""])[0]
+        uid = form.get("uid", [""])[0]
+        if uid:
+            with COVERAGE_LOCK:
+                fresh = uid not in COVERAGE_PENDING
+                COVERAGE_PENDING.add(uid)
+                COVERAGE_FAILED.pop(uid, None)  # retry: clear prior failure
+            if fresh:
+                threading.Thread(target=coverage_worker, args=(date, uid),
+                                 daemon=True).start()
+        if uid and self.headers.get("HX-Request") == "true":
+            self.respond(get_coverage_status({"date": [date], "uid": [uid]}))
             return
         self.redirect(f"/?date={urllib.parse.quote(date)}")
 

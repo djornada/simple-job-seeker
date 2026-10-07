@@ -94,6 +94,18 @@ details.fitmore summary { cursor: pointer; color: var(--muted); }
 details.fitmore ul { margin: 2px 0 6px; padding-left: 18px; }
 p.dims { margin: 4px 0 0; font-family: var(--mono); font-size: 11.5px;
   color: var(--muted); }
+table.kwtab { border-collapse: collapse; margin: 4px 0 2px;
+  font-size: 12.5px; }
+table.kwtab td { padding: 3px 14px 3px 0;
+  border-bottom: 1px solid var(--line); }
+table.kwtab td.kind { font-family: var(--mono); font-size: 11px;
+  color: var(--muted); }
+.kw { font-family: var(--mono); font-size: 11px; border-radius: 8px;
+  padding: 0 6px; border: 1px solid var(--line); color: var(--accent-ink); }
+.kw-covered { background: var(--accent); color: #fff;
+  border-color: var(--accent); }
+.kw-missing { background: var(--amber-bg); color: var(--amber);
+  border-color: var(--amber-bg); }
 p.fit .llm { font-family: var(--mono); font-size: 11px; color: var(--muted);
   margin-right: 6px; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 14px;

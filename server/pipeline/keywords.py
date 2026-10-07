@@ -7,17 +7,18 @@ from __future__ import annotations
 import re
 
 
-def _clean(term: str) -> str:
+def clean(term: str) -> str:
+    """Lower-cased, trimmed, whitespace collapsed; no alias mapping."""
     return re.sub(r"\s+", " ", str(term)).strip().lower()
 
 
 def alias_map(cfg: dict) -> dict[str, str]:
     """`[keywords].aliases`, both sides cleaned."""
     raw = cfg.get("keywords", {}).get("aliases", {})
-    return {_clean(k): _clean(v) for k, v in raw.items() if _clean(k)}
+    return {clean(k): clean(v) for k, v in raw.items() if clean(k)}
 
 
 def normalize(term: str, aliases: dict[str, str]) -> str:
     """Canonical form of a skill name ("" for a blank one)."""
-    key = _clean(term)
+    key = clean(term)
     return aliases.get(key, key)

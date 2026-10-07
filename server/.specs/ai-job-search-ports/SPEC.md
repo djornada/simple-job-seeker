@@ -347,6 +347,16 @@ Depends on 5.1 (full posting text). Independent of 5.5.
 - Stored in `queue_items.coverage_json`.
 - UI: a table of term, required or preferred, and status, with
   missing-required terms first.
+- As built: `check_coverage` wraps both steps and returns `{"terms":
+  [{"term", "kind", "status"}]}` sorted for display. Extraction runs at
+  temperature 0 over the first 8,000 chars and drops terms the posting
+  doesn't contain under any alias spelling (a substring check, since
+  archived HN text can run words together); without that, qwen3 copied
+  terms from the prompt's examples. `keywords._clean` became the public
+  `clean`. The button needs a saved posting and an imported profile; the
+  table sits in a `<details>` with a "keyword coverage: 3/5 required, 1/4
+  preferred" summary, where a synonym counts as matched. Checked on Ollama
+  `qwen3:14b`.
 
 ## 6. Files touched
 

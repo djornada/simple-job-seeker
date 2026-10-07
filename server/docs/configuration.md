@@ -97,6 +97,36 @@ min_llm_score = 5    # drop jobs the model scores below this (0 disables)
 
 Has no effect until you import a résumé; ignored if Ollama is unreachable.
 
+## `[keywords.aliases]`
+
+Spellings of the same skill, as `variant = "canonical"`. Matching is
+case-insensitive.
+
+```toml
+[keywords.aliases]
+k8s = "kubernetes"
+js = "javascript"
+ts = "typescript"
+postgres = "postgresql"
+"next.js" = "nextjs"
+"node.js" = "node"
+nodejs = "node"
+"react.js" = "react"
+reactjs = "react"
+```
+
+Used in two places:
+
+- **Gaps** (`/gaps`) merges the variants into one row, including when
+  dropping skills your profile already has.
+- **Keyword coverage** ([Résumé matching](resume-matching.md#4-keyword-coverage-per-posting))
+  marks a posting term as `synonym` when your profile has it under another
+  spelling in the same group. All spellings that map to one canonical form
+  count, so `nodejs` in a posting matches `Node.js` in your profile.
+
+Add a line whenever a coverage check shows `missing` for something you have
+under a different name.
+
 ## `[web]`
 
 The local web server.

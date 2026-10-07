@@ -70,6 +70,30 @@ actual background — the model can reference a role or project that fits.
 The [Stats](web-ui.md#stats) page adds a conversion funnel by fit-score band
 once you've accumulated enough scored history.
 
+### 4. Keyword coverage per posting
+
+Each queue card with a saved posting gets a **Check keywords** button. One
+model call reads the posting and lists the skills it asks for, split into
+**required** and **preferred** (preferred is only what the posting marks as
+optional: "nice to have", "a plus", "bonus"). Each term is then checked
+against your profile text, without the model:
+
+| Status | Meaning |
+| --- | --- |
+| `covered` | The term appears in your profile as a whole word, as the posting spells it. |
+| `synonym` | It appears under another spelling from [`[keywords.aliases]`](configuration.md#keywordsaliases), e.g. the posting says `k8s` and your profile says `Kubernetes`. |
+| `missing` | Neither. |
+
+Missing required terms are listed first. The card's summary line counts
+what's matched (`3/5 required, 1/4 preferred`), and **Check again** re-runs
+it, for example after re-importing your résumé or adding an alias.
+
+The model only *extracts* terms; matching is plain text search, so the same
+keyword list always gives the same result. A term the model returns that
+doesn't appear anywhere in the posting is dropped, so it can't invent
+requirements. Checks run on demand, never during a build, so builds stay
+fast. The result is saved in `queue_items.coverage_json`.
+
 ## Graceful degradation
 
 This whole layer is optional and fails soft:
@@ -77,7 +101,10 @@ This whole layer is optional and fails soft:
 - **No résumé imported** → the pipeline behaves exactly as the keyword-only
   version.
 - **Ollama not running / unreachable** → the re-rank stage is skipped and you
-  get the keyword ranking, with no errors.
+  get the keyword ranking, with no errors. A keyword check shows "keyword
+  check failed" with a **Try again** button; the rest of the card works.
+- **No saved posting or no résumé** → the card has no **Check keywords**
+  button.
 
 So you can import a résumé and still run without a model, or run a model
 without a résumé — each feature stands on its own.

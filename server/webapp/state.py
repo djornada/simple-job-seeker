@@ -1,9 +1,10 @@
 """Shared web-app primitives.
 
 The DB handle (`db`, the schema-less Row-factory connection from the db
-package) and HTML-escape helper, plus the background-build state guarded
-by locks — mutated by workers, read by pages and POST handlers. Everyone
-imports the same lock/dict/set objects, so mutations are shared.
+package) and HTML-escape helper, plus the background build/note/coverage
+state guarded by locks — mutated by workers, read by pages and POST
+handlers. Everyone imports the same lock/dict/set objects, so mutations
+are shared.
 """
 from __future__ import annotations
 
@@ -18,6 +19,9 @@ BUILD_LOCK = threading.Lock()
 NOTES_PENDING: set[str] = set()          # queue item uids with a note in flight
 NOTES_FAILED: set[str] = set()           # uids whose last draft attempt failed
 NOTES_LOCK = threading.Lock()
+COVERAGE_PENDING: set[str] = set()       # uids with a keyword check in flight
+COVERAGE_FAILED: dict[str, str] = {}     # uid → why its last check failed
+COVERAGE_LOCK = threading.Lock()
 
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 

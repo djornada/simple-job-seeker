@@ -78,11 +78,19 @@ component (e.g. `extension/`).
   keep their 0-10 scale; the breakdown rides on `Job.fit_detail` into
   `queue_items.fit_json` and renders as a verdict chip + `<details>` on
   queue cards (`pages/queue.py`'s `_fit_block`) and as markdown lines;
-  `keywords.py` (`alias_map`/`normalize`: lower-case, trim, collapse
-  whitespace, then `[keywords.aliases]`; shared by `/gaps` and keyword
-  coverage); `draft_note` writes sub-200-char connection notes, profile
-  readers included; with no profile or the backend down the pipeline stays
-  keyword-only and notes return None); `build.py` (`build_queue`: the
+  `keywords.py` (`clean`, then `alias_map`/`normalize`: lower-case, trim,
+  collapse whitespace, then `[keywords.aliases]`; shared by `/gaps` and
+  keyword coverage); `coverage.py` (`check_coverage`, on demand only:
+  `extract_keywords` is one JSON-mode, temperature-0 LLM call over the
+  archived posting (first 8,000 chars) for required/preferred terms,
+  dropping any the posting doesn't contain under some alias spelling — a
+  substring check, since board text can run words together; `match` is
+  deterministic: whole-word in the profile text is `covered`, another
+  alias spelling `synonym`, else `missing`; rows sorted missing-required
+  first; None = LLM unreachable, {} = no usable terms); `draft_note`
+  writes sub-200-char connection notes, profile readers included; with no
+  profile or the backend down the pipeline stays keyword-only and notes
+  return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed
   directly by both queue_agent.py's `main` and webapp's `build_worker`, so
   the two adapters can't drift apart); `rate.py` (`rate_jobs`: the third
@@ -122,10 +130,10 @@ component (e.g. `extension/`).
 - webapp/ — local web UI package over the same pipeline + state.db (pure
   stdlib http.server, binds 127.0.0.1; run with `python -m webapp`). One
   concern per module (mirrors sources/ and db/): `state.py` (DB handle +
-  shared build/notes state under locks), `assets.py` (CSS/tabs/favicon/
-  vendored htmx bytes), `multipart.py` (the in-house upload parser — stdlib
+  shared build/notes/coverage state under locks), `assets.py` (CSS/tabs/
+  favicon/vendored htmx bytes), `multipart.py` (the in-house upload parser — stdlib
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
-  (background build/note threads — `build_worker` calls
+  (background build/note/coverage threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
   module per route — queue, board, applications, due, log, company,
   posting, stats, gaps, profile — with GET_ROUTES in its facade; add a
@@ -167,17 +175,25 @@ component (e.g. `extension/`).
   (latest row per uid, so a re-queued job counts once): postings, weighted
   score (sum of 1 − overall/100), last seen, three example companies;
   skills in the profile's `skills_json` are dropped after the same
-  normalization. The `/`
+  normalization. Keyword coverage: "Check keywords" on a queue card
+  (`POST /coverage`, the `/note` pattern: `coverage_worker` thread,
+  `COVERAGE_PENDING`/`COVERAGE_FAILED` in state.py, the latter uid →
+  reason) stores `check_coverage`'s result in `queue_items.coverage_json`;
+  `pages/queue.py`'s `coverage_block` renders the table in a `<details>`
+  (opened by the `GET /coverage-status` poll that delivers it), and the
+  button only shows with a saved posting and a profile (`ITEM_SELECT`'s
+  `archived` and `profiled`). The `/`
   queue page uses htmx (vendored at
   `webapp/static/htmx.min.js`, served from `server.py`, never a CDN — the
   webapp still makes no outbound browser requests) for in-place updates:
-  toggling an item, drafting a note, and running a build all respond with an
-  HTML fragment when the request carries `HX-Request: true` (see
-  `pages/queue.py`'s `render_item`/`note_block`/`_build_section`), falling
-  back to a normal redirect otherwise so the plain `<form>` still works with
-  JS off. Note-drafting and build-progress poll their own scoped element
-  (`GET /note-status`, `GET /build-status`) instead of the old blanket
-  `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
+  toggling an item, drafting a note, checking keywords, and running a
+  build all respond with an HTML fragment when the request carries
+  `HX-Request: true` (see `pages/queue.py`'s `render_item`/`note_block`/
+  `coverage_block`/`_build_section`), falling back to a normal redirect
+  otherwise so the plain `<form>` still works with JS off. Note-drafting,
+  keyword checks and build-progress poll their own scoped element
+  (`GET /note-status`, `GET /coverage-status`, `GET /build-status`)
+  instead of the old blanket `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
 - config.toml — all configuration (sources, filters, gates, targets,
   resume + resume.weights, keywords.aliases, expiry, applications, llm
   provider, ollama, openai, extension token).

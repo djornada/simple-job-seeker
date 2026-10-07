@@ -162,9 +162,18 @@ Everything lives in `config.toml`:
   many postings flagged each one, a weighted score that counts gaps from
   weaker fits more (sum of 1 − overall/100), when it was last seen and
   example companies. Skills already in your imported profile are left out.
+
+  **Check keywords** on a queue card (needs a saved posting) has the LLM
+  list the posting's required and preferred skills, then checks each one
+  against your profile without the LLM: `covered` (whole-word match),
+  `synonym` (matched under another `[keywords.aliases]` spelling) or
+  `missing`, missing required terms first. Terms the posting doesn't
+  actually contain are dropped. On demand only, never during a build;
+  with the LLM down the card shows the failure and a retry button.
 - `[keywords.aliases]` — spellings to merge, `variant = "canonical"`
   (`k8s = "kubernetes"`, `"next.js" = "nextjs"`), case-insensitive. Used by
-  `/gaps`, including when matching against your profile's skills.
+  `/gaps`, including when matching against your profile's skills, and by
+  keyword coverage's `synonym` status.
 - `[expiry]` — `--recheck` limits: `max_checks` (50) requests per run,
   skip postings archived less than `min_age_days` (2) ago, and don't
   re-check one within `recheck_days` (3).

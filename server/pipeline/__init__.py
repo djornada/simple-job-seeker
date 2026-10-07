@@ -19,6 +19,9 @@ One concern per module (mirrors sources/ and db/):
   LinkedIn) and mark the ones taken down
 - keywords.py — `normalize`/`alias_map`: skill names lower-cased, trimmed,
   mapped through `[keywords].aliases` (the gaps page and keyword coverage)
+- coverage.py — `check_coverage`: one LLM call extracts a posting's
+  required/preferred keywords, `match` checks them against the profile
+  deterministically (covered / synonym / missing)
 - links.py   — `build_links`: LinkedIn people-search + Google x-ray URLs
 - render.py  — `render` (queue → markdown) and `show_stats`, for the CLI
 
@@ -29,6 +32,7 @@ sync; every dependency points at the concrete module that owns it.
 from __future__ import annotations
 
 from .build import build_queue
+from .coverage import check_coverage
 from .expiry import recheck
 from .gates import check_gates
 from .links import build_links
@@ -44,7 +48,7 @@ from .resume import (
 from .scoring import score_job
 from .select import select_queue
 
-__all__ = ["build_links", "build_queue", "check_gates", "draft_note",
-           "judge_fit", "load_profile_bits", "load_profile_text", "rate_jobs",
-           "recheck", "render", "rerank_with_resume", "score_job",
+__all__ = ["build_links", "build_queue", "check_coverage", "check_gates",
+           "draft_note", "judge_fit", "load_profile_bits", "load_profile_text",
+           "rate_jobs", "recheck", "render", "rerank_with_resume", "score_job",
            "select_queue", "show_stats"]

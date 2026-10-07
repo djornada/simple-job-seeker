@@ -16,6 +16,7 @@ from .profile import page_profile
 from .queue import (
     ITEM_SELECT,
     get_build_status,
+    get_coverage_status,
     get_note_status,
     note_block,
     page_queue,
@@ -35,11 +36,12 @@ GET_ROUTES = {
     "/gaps": page_gaps,
     "/profile": page_profile,
     "/note-status": get_note_status,
+    "/coverage-status": get_coverage_status,
     "/build-status": get_build_status,
 }
 
 __all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
-           "note_block", "page_applications", "page_board", "page_company",
-           "page_due", "page_gaps", "page_log", "page_posting",
-           "page_profile", "page_queue", "page_stats", "render_app",
-           "render_item"]
+           "get_coverage_status", "note_block", "page_applications",
+           "page_board", "page_company", "page_due", "page_gaps", "page_log",
+           "page_posting", "page_profile", "page_queue", "page_stats",
+           "render_app", "render_item"]
