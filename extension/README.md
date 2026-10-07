@@ -23,8 +23,9 @@ the DOM you already loaded, on your click.
 Open `linkedin.com/feed/...` or a `linkedin.com/jobs/...` page, click the
 extension icon, click **Scan this page**. Results show a score, and (if
 you've imported a résumé via the `/profile` page) an LLM fit score and
-note. Anything that clears the bar is already in today's queue — check
-`/` on the web UI.
+note, plus any `[gates]` flags in amber (for a skipped item, why it was
+rejected — e.g. `Requires German`). Anything that clears the bar is
+already in today's queue — check `/` on the web UI.
 
 ## If a scan comes back empty
 

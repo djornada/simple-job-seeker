@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
+from collections import Counter
 
 from db import is_new
 from sources import Job
@@ -14,6 +16,11 @@ def select_queue(conn: sqlite3.Connection, jobs: list[Job], cfg: dict,
     """Score, filter, dedupe (one job per company) and cap the queue."""
     for job in jobs:
         job.score = score_job(job, cfg)
+    if cfg.get("gates"):
+        gated = Counter(j.gate for j in jobs if j.gate)
+        print(f"[gate] rejected {sum(gated.values())} "
+              f"(language {gated['language']}, "
+              f"eligibility {gated['eligibility']})", file=sys.stderr)
     candidates = [j for j in jobs if j.score > 0 and j.company and j.url]
     candidates.sort(key=lambda j: j.score, reverse=True)
 

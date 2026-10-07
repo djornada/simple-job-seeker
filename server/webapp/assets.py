@@ -78,6 +78,9 @@ p.note.pending { color: var(--muted); font-style: italic; }
 p.note.failed { color: var(--amber); background: var(--amber-bg); font-size: 12.5px; }
 p.fit { margin: 6px 0 0; font-size: 13px; color: var(--accent-ink);
   border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; }
+p.flags { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.flag { font-size: 12px; background: var(--amber-bg); color: var(--amber);
+  border-radius: 8px; padding: 1px 8px; }
 p.fit .llm { font-family: var(--mono); font-size: 11px; color: var(--muted);
   margin-right: 6px; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 14px;

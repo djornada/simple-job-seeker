@@ -131,22 +131,33 @@ region_only = [
 ]
 ```
 
-New `pipeline/gates.py` with `check_gates(job, cfg) -> tuple[bool, list[str]]`
-(passes, flags):
+New `pipeline/gates.py` with `check_gates(job, cfg) -> tuple[str, list[str]]`
+(reject kind, flags). The kind is `""` when the job passes, else
+`"eligibility"` or `"language"`, which the build summary counts. On a
+rejection, flags hold the reason.
 
 - **Eligibility.** A blocker phrase in `full_text or description` rejects
   the job. A `region_only` phrase in location or title also rejects. This
   check runs before the brazil ok-markers, which closes the
-  `Remote - US only` hole.
+  `Remote - US only` hole. Phrases match at a word start, so `us citizen`
+  catches `US citizens` but `us only` doesn't catch `focus only`.
+  `region_only` applies whether or not `brazil_friendly_only` is on.
 - **Language.** Match a fixed list of about 25 human-language names (not
   programming languages, so no "Go" or "Rust" false positives) against
   requirement patterns: `fluent in X`, `X (fluent|native|C1|C2|B2)`,
   `X is required`, `X speaker`, `proficient in X`. A required language
   missing from `[gates].languages` rejects the job. A requested level above
   the declared one (native > C2 > C1 > B2 > B1) adds a flag such as
-  `Asks for native English; you declared C1` without rejecting.
-- `score_job` calls `check_gates` first. A rejection returns `0.0`; flags
-  go on `job.flags`.
+  `Asks for native English; you declared C1` without rejecting. Also
+  `native X`, so "Native English" is read as a native-level request.
+  `X or Y` passes when either is declared. A mention softened in the same
+  clause ("a plus", "nice to have", "preferred", "not required") never
+  rejects; an undeclared one is flagged `X nice-to-have`. An empty
+  `languages` table turns the language gate off.
+- `score_job` calls `check_gates` first. A rejection returns `0.0`; the
+  kind goes on `job.gate`, flags on `job.flags`. `rate_jobs` skips
+  `judge_fit` for a gated job and never queues it, so an LLM score can't
+  bring it back.
 - Flags persist to `queue_items.flags` and show as chips on queue cards,
   in the markdown render and in the extension popup (`/api/rate` returns
   them).

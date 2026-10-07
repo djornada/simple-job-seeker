@@ -159,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps({"results": [
             {"uid": j.uid, "title": j.title, "company": j.company,
              "score": j.score, "llm_score": j.llm_score,
-             "fit_note": j.fit_note,
+             "fit_note": j.fit_note, "flags": j.flags,
              "queued": j.score > 0 or (j.llm_score or 0) >= floor}
             for j in rated
         ]}).encode()

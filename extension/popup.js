@@ -48,6 +48,13 @@ function renderResults(results) {
       item.append(fit);
     }
 
+    if (r.flags && r.flags.length) {
+      const flags = document.createElement('div');
+      flags.className = 'flags';
+      flags.textContent = r.flags.join(' · ');
+      item.append(flags);
+    }
+
     resultsEl.append(item);
   }
 }

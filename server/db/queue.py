@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sqlite3
 
 from sources import Job
@@ -35,13 +36,15 @@ def save_queue(conn: sqlite3.Connection, queue: list[Job],
         conn.execute("""
             INSERT INTO queue_items
                 (date, uid, source, company, title, url, location, score, note,
-                 description, fit_note, llm_score)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 description, fit_note, llm_score, flags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(date, uid) DO UPDATE SET
                 note = COALESCE(queue_items.note, excluded.note),
                 fit_note = COALESCE(excluded.fit_note, queue_items.fit_note),
-                llm_score = COALESCE(excluded.llm_score, queue_items.llm_score)
+                llm_score = COALESCE(excluded.llm_score, queue_items.llm_score),
+                flags = COALESCE(excluded.flags, queue_items.flags)
         """, (today, j.uid, j.source, j.company, j.title, j.url,
               j.location, j.score, notes.get(j.uid),
-              j.description, j.fit_note or None, j.llm_score))
+              j.description, j.fit_note or None, j.llm_score,
+              json.dumps(j.flags) if j.flags else None))
     conn.commit()

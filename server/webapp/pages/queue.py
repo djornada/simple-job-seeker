@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sqlite3
 import urllib.parse
 
@@ -80,6 +81,11 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
         band = (f'<span class="llm">fit {r["llm_score"]:g}/10</span>'
                 if r["llm_score"] is not None else "")
         fit_html = f'<p class="fit">{band}{esc(r["fit_note"])}</p>'
+    flags = json.loads(r["flags"]) if r["flags"] else []
+    flags_html = (
+        '<p class="flags">'
+        + "".join(f'<span class="flag">{esc(f)}</span>' for f in flags)
+        + "</p>") if flags else ""
 
     done = bool(r["done"])
     return f"""
@@ -96,6 +102,7 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
     <p class="meta">{' · '.join(meta_bits)}</p>
     <p class="linkrow">{' '.join(linkrow)}</p>
     {fit_html}
+    {flags_html}
     {note_block(date, r['uid'], r['note'], pending, failed)}
   </div>
 </article>"""

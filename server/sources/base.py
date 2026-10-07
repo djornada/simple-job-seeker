@@ -21,6 +21,8 @@ class Job:
     full_text: str = ""    # untruncated, archived in `postings`
     llm_score: float | None = None
     fit_note: str = ""
+    flags: list[str] = field(default_factory=list)  # gate notes, persisted
+    gate: str = ""  # "language"/"eligibility" when a gate rejected it
 
     @property
     def uid(self) -> str:

@@ -22,6 +22,8 @@ def render(queue: list[Job], links: dict[str, dict[str, str]],
             lines.append(f"- Fit score: {job.llm_score:g}/10")
         if job.fit_note:
             lines.append(f"- Fit: {job.fit_note}")
+        if job.flags:
+            lines.append(f"- Flags: {'; '.join(job.flags)}")
         for label, url in links[job.uid].items():
             lines.append(f"- {label}: {url}")
         if job.uid in notes:

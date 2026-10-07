@@ -31,7 +31,9 @@ Each run:
 
 1. Fetches RemoteOK (JSON API), Remotive (API), We Work Remotely (RSS)
 2. Scores jobs: role keyword in title required; stack keywords add points
-3. Drops non-Brazil-friendly locations (`brazil_friendly_only`)
+3. Drops non-Brazil-friendly locations (`brazil_friendly_only`) and,
+   with `[gates]` set, postings you can't be hired for (language,
+   citizenship, region-only)
 4. Skips jobs already seen and companies queued in the last 30 days (SQLite)
 5. Prints the queue and saves it to `queues/YYYY-MM-DD.md`
 6. Archives each queued job's full posting text in `state.db`, so it
@@ -87,6 +89,26 @@ Everything lives in `config.toml`:
 - `role_keywords` / `stack_keywords` / `exclude_keywords` — scoring
 - `people_roles` — who to look for (recruiters, EMs, heads of eng…)
 - `brazil_friendly_only` — set `false` to see everything
+- `[gates]` — reject postings you can't be hired for, before any LLM call.
+  Delete the table to turn them off. Each build prints
+  `[gate] rejected N (language X, eligibility Y)` to stderr.
+  - `languages` — languages you work in, with your level (`A1`–`C2` or
+    `"native"`). A posting that requires one you haven't listed ("fluent in
+    German", "German (C1)", "German speaker", "German is required") is
+    rejected; "German or English" passes if either is listed. Asking for a
+    higher level than yours ("native English" vs your `C1`) only adds a
+    flag. A mention softened nearby ("a plus", "nice to have", "preferred")
+    never rejects. Only human languages count, so "Go" or "Rust" never
+    trigger it. Leave it empty to turn the language gate off.
+  - `eligibility_blockers` — phrases in the posting text that reject it
+    ("us citizen", "security clearance"…).
+  - `region_only` — phrases in the location or title that reject it
+    ("us only", "remote (us)"…), even when the location also says remote.
+
+  Phrases are case-insensitive and match at a word start, so `us citizen`
+  also catches "US citizens". Flags show as chips on the web UI's queue
+  cards, as a `Flags:` line in `queues/<date>.md` and in the extension
+  popup, which also shows why a skipped item was rejected.
 
 ## Extending
 

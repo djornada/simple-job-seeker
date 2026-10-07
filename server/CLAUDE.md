@@ -39,9 +39,16 @@ component (e.g. `extension/`).
   persist, plus the `queues/<date>.md` artifact) and imports its pieces
   directly from `pipeline`/`db`/`utils` — no facade to keep in sync.
 - pipeline/ — the stages between the boards and the daily queue, one concern
-  per module: `scoring.py` (`score_job`: role keyword in title required,
-  stack keywords add points, exclude/non-Brazil-friendly reject);
-  `select.py` (`select_queue`: score → filter → per-company dedup → cap);
+  per module: `gates.py` (`check_gates`: the `[gates]` language and
+  eligibility gates — an eligibility blocker in the posting text or a
+  region-only phrase in location/title rejects, a required human language
+  you haven't declared rejects, a higher requested level only flags; off
+  without a `[gates]` table); `scoring.py` (`score_job`: gates first —
+  `job.gate` holds the reject kind, `job.flags` the notes — then role
+  keyword in title required, stack keywords add points,
+  exclude/non-Brazil-friendly reject); `select.py` (`select_queue`: score
+  → filter → per-company dedup → cap, plus one `[gate] rejected N` stderr
+  line per build when `[gates]` is set);
   `resume.py` (resume-in-the-loop over the `llm/` facade —
   `rerank_with_resume` re-scores the keyword-gated shortlist by real fit,
   `judge_fit` is the single-job primitive it batches over (also used by
@@ -54,8 +61,9 @@ component (e.g. `extension/`).
   use case — scores ad-hoc jobs/posts the browser extension POSTs to
   `/api/rate` via `score_job` + `judge_fit` and persists anything that
   clears the bar via `db.save_queue`, same as `build_queue` does for
-  board-sourced jobs); `links.py` (`build_links`: LinkedIn people-search +
-  Google x-ray URLs — URLs only, the click is human); `render.py`
+  board-sourced jobs; a gated job skips `judge_fit` and is never queued);
+  `links.py` (`build_links`: LinkedIn people-search + Google x-ray URLs —
+  URLs only, the click is human); `render.py`
   (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
   `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
@@ -100,7 +108,10 @@ component (e.g. `extension/`).
   gated by the `X-Extension-Token` header against `[extension].token` in
   config.toml rather than the same-origin check (`origin_ok`) the web UI's
   own forms rely on; it trims each item's description to 2,000 chars for
-  the LLM and keeps up to 20,000 as `full_text` for the archive.
+  the LLM and keeps up to 20,000 as `full_text` for the archive, and
+  returns each item's gate `flags` for the popup. Flags persist as JSON in
+  `queue_items.flags` and render as amber chips on queue cards (and as a
+  `- Flags:` line in the markdown queue).
   `GET /posting?uid=` shows a job's archived text, archive date and
   original URL; queue cards link to it ("saved posting") when a row exists
   (`pages/queue.py`'s `ITEM_SELECT` adds the `archived` flag). The `/`
@@ -114,8 +125,8 @@ component (e.g. `extension/`).
   JS off. Note-drafting and build-progress poll their own scoped element
   (`GET /note-status`, `GET /build-status`) instead of the old blanket
   `<meta refresh>`. See `.specs/htmx-queue-page/SPEC.md` for the design.
-- config.toml — all configuration (sources, filters, targets, resume, llm
-  provider, ollama, openai, extension token).
+- config.toml — all configuration (sources, filters, gates, targets,
+  resume, llm provider, ollama, openai, extension token).
 - install.sh — bash setup helper: ensures Ollama is installed, detects GPU
   VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
   from a size ladder, pulls it, and updates the `[ollama]` model in

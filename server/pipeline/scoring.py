@@ -1,9 +1,12 @@
-"""Keyword scoring: role keyword in title gates, stack keywords add points."""
+"""Keyword scoring: gates first, role keyword in title required, stack
+keywords add points."""
 from __future__ import annotations
 
 import re
 
 from sources import Job
+
+from .gates import check_gates
 
 
 def _norm(text: str) -> str:
@@ -11,7 +14,11 @@ def _norm(text: str) -> str:
 
 
 def score_job(job: Job, cfg: dict) -> float:
-    """Score by keyword matches; return 0 to reject."""
+    """Score by keyword matches; return 0 to reject. Language and
+    eligibility gates run first and leave their notes on `job.flags`."""
+    job.gate, job.flags = check_gates(job, cfg)
+    if job.gate:
+        return 0.0
     f = cfg["filters"]
     haystack = _norm(f"{job.title} {' '.join(job.tags)}")
     title = _norm(job.title)

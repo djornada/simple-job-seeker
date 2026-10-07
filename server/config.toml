@@ -35,6 +35,27 @@ exclude_keywords = [
 # (worldwide / anywhere / LATAM / americas / brazil / global / remote)
 brazil_friendly_only = true
 
+# Language and eligibility gates: reject postings you can't be hired for
+# before they spend an LLM call. Delete this table to turn them off.
+[gates]
+# Languages you can work in, with your level (CEFR A1-C2 or "native").
+# A posting that requires a language missing here is rejected; one asking
+# for a higher level than yours is kept with a flag. Empty = no language gate.
+languages = { english = "C1", portuguese = "native" }
+# Phrases in the posting text that mean you can't be hired. Case-insensitive,
+# matched at a word start ("us citizen" also catches "US citizens").
+eligibility_blockers = [
+    "us citizen", "u.s. citizen", "green card", "security clearance",
+    "authorized to work in the us", "eu citizen", "eu work permit",
+    "right to work in the uk",
+]
+# Location or title text that restricts hiring to one region, even when
+# "remote". Applies whether or not brazil_friendly_only is on.
+region_only = [
+    "us only", "usa only", "u.s. only", "eu only", "uk only",
+    "canada only", "north america only", "remote - us", "remote (us)",
+]
+
 # Resume-in-the-loop: LLM re-rank of the keyword-gated queue against your
 # imported profile (python profile.py import <export.zip>). With no profile
 # or Ollama down, the pipeline stays keyword-only.
