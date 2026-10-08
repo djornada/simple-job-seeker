@@ -92,7 +92,12 @@ component (e.g. `extension/`).
   first; None = LLM unreachable, {} = no usable terms); `draft_note`
   writes `NOTE_LIMIT` (200)-char connection notes in the candidate's voice
   to an unnamed `people_roles` reader — role + company first, then one
-  result; `_tidy_note` strips named greetings/sign-offs, an over-long
+  result; given `job.description` (build time) or the archived
+  `postings.text[:2000]` (`note_worker`), it replies JSON-mode with the
+  posting's need and the matching experience before the note, at
+  temperature 0.3, so the result fits the posting instead of always being
+  the headline one (title-only, plain text, 0.7 without a posting);
+  `_tidy_note` strips named greetings/sign-offs, an over-long
   draft gets one retry with its length fed back, then `_fit_note` cuts at
   the last full sentence — profile readers included; with no
   profile or the backend down the pipeline stays keyword-only and notes

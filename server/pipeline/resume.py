@@ -97,6 +97,32 @@ def draft_note(job: Job, cfg: dict) -> str | None:
     # to its owner (drafts used to open "Hi <name>, I saw your profile")
     background = (f"\n\nMY BACKGROUND (I am the candidate):\n{profile_text}"
                   if profile_text else "")
+    # The posting lets the model match a result to what the role asks for.
+    # Shown the posting but asked for the note alone, it still cited the
+    # résumé's headline result 7 times in 10, so with a posting it first
+    # names the role's main need and the experience that answers it (JSON).
+    posting = (f"\n\nTHE POSTING (what they're hiring for):\n"
+               f"{job.description}" if job.description else "")
+    if posting:
+        result = ("the experience of mine you picked as the best match, with "
+                  "a concrete detail")
+        reply = (
+            "Before writing, pick what to cite: the posting's main technical "
+            "need, then the one position or project of mine that answers it "
+            "best. Prefer a different one over my most impressive result when "
+            "it fits the need better, and recent professional work over "
+            "internships. In the note, state what I did using only facts "
+            "written in my background: never change what it was, did or was "
+            "for to fit the posting. If nothing fits well, cite the closest "
+            "one as it is. Don't add why it's relevant ('a skill directly "
+            "applicable to…', 'similar to your…') and don't describe their "
+            "product. Reply as JSON only:\n"
+            '{"need": "<the posting\'s main need, a few words>", "match": '
+            '"<the position or project of mine that answers it>", "note": '
+            '"<the note>"}')
+    else:
+        result = "one concrete result or project of mine that fits it"
+        reply = "Reply with the note text only."
     prompt = (
         "You are a job candidate writing a LinkedIn connection note. Write "
         f"in the first person, as me: {me}. The reader is the "
@@ -106,9 +132,10 @@ def draft_note(job: Job, cfg: dict) -> str | None:
         # at a sentence end, so ask for less and lead with what must survive
         f"- Under 160 characters (hard limit {NOTE_LIMIT}), in English, two "
         "short sentences.\n"
-        "- First sentence: the role and the company I'm reaching out about. "
-        "Second: one concrete result or project of mine that fits it. Don't "
-        "introduce me by job title or list my skills.\n"
+        "- First sentence: the role and the company I'm reaching out about; "
+        "shorten a long role title (drop parentheses and seniority lists). "
+        f"Second: {result}. Don't introduce me by job title or list my "
+        "skills.\n"
         "- No names at all: don't greet anyone by name and don't sign it. "
         'Open with "Hi," or no greeting.\n'
         "- I'm the one reaching out: never praise the reader's profile or "
@@ -116,19 +143,33 @@ def draft_note(job: Job, cfg: dict) -> str | None:
         'needs").\n'
         "- Friendly and direct: no agency-speak, no emojis, no 'I hope this "
         "finds you well'.\n\n"
-        f"Company: {job.company}\nRole: {job.title}{background}\n\n"
-        "Reply with the note text only."
+        f"Company: {job.company}\nRole: {job.title}{posting}{background}\n\n"
+        f"{reply}"
     )
     note = ""
     for _ in range(2):  # an over-long draft gets one retry before the cut
-        raw = llm.generate(cfg, prompt, options={"temperature": 0.7})
+        # cooler with a posting: steering toward the posting's domain, the
+        # model must still repeat résumé facts as written, not embellish them
+        raw = llm.generate(cfg, prompt, fmt="json" if posting else None,
+                           options={"temperature": 0.3 if posting else 0.7})
         if raw is None:
             break
-        note = _tidy_note(llm.strip_think(raw))
+        text = llm.strip_think(raw)
+        if posting:  # plain prose instead of JSON is taken as the note;
+            data = parse_json_object(text)  # JSON without one is no draft
+            if data is not None:
+                text = str(data.get("note") or "")
+        note = _tidy_note(text)
         if len(note) <= NOTE_LIMIT:
             break
+        # a vague "shorten it" still came back over; give the exact budget
+        # left for the second sentence (the part _fit_note would cut)
+        first = _SENTENCE_END_RE.search(note)
+        room = NOTE_LIMIT - (first.end() + 1 if first else 0)
         prompt += (f"\n\nYour last draft was {len(note)} characters, over "
-                   f"the limit:\n{note}\nShorten the second sentence.")
+                   f"the {NOTE_LIMIT} limit:\n{note}\nKeep the same match. "
+                   f"The second sentence must be under {room} characters, "
+                   "or shorten the first.")
     return _fit_note(note) or None
 
 

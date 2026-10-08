@@ -62,13 +62,18 @@ def note_worker(date: str, uid: str) -> None:
     try:
         cfg = load_config()
         conn = db()
+        # the archived posting, if any, trimmed like a source's description
+        # (the slice the LLM saw at build time) so the note can match it
         row = conn.execute(
-            "SELECT source, title, company, url, location FROM queue_items "
-            "WHERE date = ? AND uid = ?", (date, uid)).fetchone()
+            "SELECT q.source, q.title, q.company, q.url, q.location, "
+            "substr(p.text, 1, 2000) AS posting FROM queue_items q "
+            "LEFT JOIN postings p ON p.uid = q.uid "
+            "WHERE q.date = ? AND q.uid = ?", (date, uid)).fetchone()
         if row:
             job = Job(source=row["source"], title=row["title"],
                      company=row["company"], url=row["url"],
-                     location=row["location"])
+                     location=row["location"],
+                     description=row["posting"] or "")
             note = draft_note(job, cfg)
             if note:
                 conn.execute(

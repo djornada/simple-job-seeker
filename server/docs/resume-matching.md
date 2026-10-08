@@ -75,6 +75,13 @@ enforces what the model can get wrong: a named greeting ("Hi Sam,") becomes
 "Hi,", a sign-off is dropped, and a draft over 200 characters gets one retry
 and is then cut at its last full sentence, never mid-word.
 
+When the job's posting is saved (the card's **saved posting** link), the model
+also reads its first 2,000 characters. It first names the posting's main need,
+then picks the position or project of yours that answers it best, so a role
+asking for Chrome extensions gets your Chrome extension work rather than your
+most impressive result every time. It may only state facts from your résumé.
+With no saved posting, the note is drafted from the job title alone.
+
 ### 3. Stats gain a fit-score breakdown
 
 The [Stats](web-ui.md#stats) page adds a conversion funnel by fit-score band
