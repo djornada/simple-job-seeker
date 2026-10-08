@@ -229,10 +229,11 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
 
 
 def _build_section(date: str, rows: list[sqlite3.Row], prow: sqlite3.Row | None,
-                   building: bool, error: str) -> str:
+                   building: bool, error: str, stage: str = "") -> str:
     """Manifest header + progress + build form + status banner, wrapped in
     one polled element. Shared by the full page render, `POST /build`'s
-    htmx response, and `GET /build-status`."""
+    htmx response, and `GET /build-status`. `stage` is the worker's
+    `BUILD["progress"]` ("scoring fit 12/45"), shown while building."""
     today = dt.date.today().isoformat()
     done_n = sum(r["done"] for r in rows)
     weekday = dt.date.fromisoformat(date).strftime("%A")
@@ -256,14 +257,16 @@ def _build_section(date: str, rows: list[sqlite3.Row], prow: sqlite3.Row | None,
   <form class="buildform" method="post" action="/build"
         hx-post="/build" hx-target="#build-status" hx-swap="outerHTML">
     <input type="hidden" name="date" value="{esc(date)}">
-    <label class="opt"><input type="checkbox" name="notes" value="1"> draft notes</label>
+    <label class="opt" title="one LLM call per target; or draft per card"><input
+      type="checkbox" name="notes" value="1"> draft notes</label>
     <button class="primary"{disabled}>{build_label}</button>
   </form>
 </div>"""
 
     banner = ""
     if building:
-        banner = '<p class="banner">Building queue — fetching job boards…</p>'
+        banner = (f'<p class="banner">Building queue — '
+                  f'{esc(stage or "fetching job boards")}…</p>')
     elif error:
         banner = f'<p class="banner err">Last build failed: {esc(error)}</p>'
 
@@ -321,7 +324,8 @@ def get_build_status(params: dict[str, list[str]]) -> str:
     conn.close()
     with BUILD_LOCK:
         building, error = BUILD["running"], BUILD["error"]
-    return _build_section(date, rows, prow, building, error)
+        stage = BUILD["progress"]
+    return _build_section(date, rows, prow, building, error, stage)
 
 
 def page_queue(params: dict[str, list[str]]) -> str:
@@ -343,11 +347,12 @@ def page_queue(params: dict[str, list[str]]) -> str:
     cfg = load_config()
     with BUILD_LOCK:
         building, error = BUILD["running"], BUILD["error"]
+        stage = BUILD["progress"]
     with NOTES_LOCK:
         pending = set(NOTES_PENDING)
         failed = set(NOTES_FAILED)
 
-    build_section = _build_section(date, rows, prow, building, error)
+    build_section = _build_section(date, rows, prow, building, error, stage)
 
     datenav = ""
     if len(dates) > 1:

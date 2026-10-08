@@ -65,7 +65,7 @@ def main() -> int:
               file=sys.stderr)
         return 0
 
-    limit = args.n or cfg["targets"].get("per_day", 10)
+    limit = args.n or cfg["targets"].get("per_day", 30)
     queue = build_queue(conn, cfg, limit)
 
     links = {j.uid: build_links(j, cfg) for j in queue}

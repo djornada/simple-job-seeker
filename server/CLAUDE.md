@@ -99,7 +99,11 @@ component (e.g. `extension/`).
   return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed
   directly by both queue_agent.py's `main` and webapp's `build_worker`, so
-  the two adapters can't drift apart); `rate.py` (`rate_jobs`: the third
+  the two adapters can't drift apart; with a profile it selects and judges
+  a pool of max(1.5 × limit, `[resume].shortlist`) so the
+  `min_llm_score` cut still fills the queue, and passes `on_progress`
+  through to `rerank_with_resume`, which `build_worker` turns into
+  `BUILD["progress"]` for the banner); `rate.py` (`rate_jobs`: the third
   use case — scores ad-hoc jobs/posts the browser extension POSTs to
   `/api/rate` via `score_job` + `judge_fit` and persists anything that
   clears the bar via `db.save_queue`, same as `build_queue` does for

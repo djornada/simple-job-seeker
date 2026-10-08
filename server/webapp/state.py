@@ -14,7 +14,7 @@ import threading
 
 from db import connect as db  # noqa: F401 — the web app's per-request handle
 
-BUILD = {"running": False, "error": ""}
+BUILD = {"running": False, "error": "", "progress": ""}  # progress: banner text
 BUILD_LOCK = threading.Lock()
 NOTES_PENDING: set[str] = set()          # queue item uids with a note in flight
 NOTES_FAILED: set[str] = set()           # uids whose last draft attempt failed

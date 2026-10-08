@@ -15,7 +15,7 @@ Controls the shape of the daily queue and the outreach links.
 
 ```toml
 [targets]
-per_day = 10                  # how many companies per daily queue
+per_day = 30                  # how many companies per daily queue
 company_cooldown_days = 30    # don't re-queue the same company within N days
 people_roles = ["Technical Recruiter", "Engineering Manager"]
 ```
@@ -95,13 +95,13 @@ The optional LLM re-rank against your imported résumé. See
 
 ```toml
 [resume]
-shortlist = 30       # jobs sent to the LLM re-rank after the keyword gate
+shortlist = 30       # min jobs sent to the LLM re-rank after the keyword gate
 min_llm_score = 5    # drop jobs the model scores below this (0 disables)
 ```
 
 | Key | Meaning |
 | --- | --- |
-| `shortlist` | How many top keyword-ranked jobs to send through the model. |
+| `shortlist` | The minimum number of top keyword-ranked jobs to send through the model. A build judges 1.5 × `[targets] per_day` when that's more (45 for a queue of 30), so the `min_llm_score` cut still leaves a full queue. One LLM call each. |
 | `min_llm_score` | Drop jobs the model scores below this (0–10 scale). `0` keeps everything. |
 
 Has no effect until you import a résumé; ignored if Ollama is unreachable.

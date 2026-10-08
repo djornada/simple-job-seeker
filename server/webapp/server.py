@@ -203,6 +203,7 @@ class Handler(BaseHTTPRequestHandler):
             if not BUILD["running"]:
                 BUILD["running"] = True
                 BUILD["error"] = ""
+                BUILD["progress"] = ""
                 threading.Thread(target=build_worker,
                                  args=("notes" in form,), daemon=True).start()
         if self.headers.get("HX-Request") == "true":

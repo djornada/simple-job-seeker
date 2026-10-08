@@ -57,8 +57,15 @@ nav.dates a.cur { color: var(--ink); font-weight: 700; text-decoration: none; }
 article.target { display: flex; gap: 14px; background: var(--card);
   border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
   margin-bottom: 10px; }
-article.target.done { opacity: .55; }
-article.target.done h2 { text-decoration: line-through; }
+/* a worked card collapses to one line: tick, company, title; unticking
+   brings the rest back */
+article.target.done { opacity: .55; padding: 8px 16px; align-items: center; }
+article.target.done h2 { text-decoration: line-through; flex-shrink: 0; }
+article.target.done > div { display: flex; gap: 10px; align-items: baseline;
+  min-width: 0; }
+article.target.done > div > :not(h2, p.meta) { display: none; }
+article.target.done p.meta { margin: 0; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
 .tick { width: 26px; height: 26px; border-radius: 6px;
   border: 1.5px solid var(--line); background: var(--paper); cursor: pointer;
   color: var(--accent); font-size: 15px; line-height: 1; }

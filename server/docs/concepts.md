@@ -36,7 +36,7 @@ Each day you **build a queue**. The pipeline:
 4. **Dedupes** to one company per row and skips companies still on cooldown.
 5. **Ranks** — and if your résumé is imported, re-ranks by real fit with a
    local LLM.
-6. **Caps** the result at `per_day` (default 10) so the list stays doable.
+6. **Caps** the result at `per_day` (default 30) so the list stays doable.
 
 Each row arrives with everything you need to act: the job post link, LinkedIn
 people-search links for recruiters and engineering managers at that company, a

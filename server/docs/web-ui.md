@@ -32,10 +32,15 @@ Six tabs across the top: **Queue · Board · Due · Log · Stats · Résumé**. 
 Your daily worklist and the page you'll live in.
 
 - **Build today's queue** runs the full pipeline in the background (the page
-  keeps working while it fetches). If today's queue already exists, the button
-  reads **Fetch more targets** and tops it up.
-- Tick **draft notes** before building to also generate connection notes.
-- A **progress bar** shows how many targets you've worked (`3/10 worked`).
+  keeps working while it fetches). The banner shows where it is: fetching
+  job boards, then `scoring fit 12/45` while the résumé re-rank runs (one LLM
+  call per job, so a queue of 30 takes a few minutes). If today's queue
+  already exists, the button reads **Fetch more targets** and tops it up.
+- Tick **draft notes** before building to also generate connection notes
+  (one more LLM call per target; you can draft per card instead).
+- A **progress bar** shows how many targets you've worked (`3/30 worked`).
+  Ticking a card collapses it to one line (company and title); untick it to
+  see the rest again.
 - A **date strip** appears once you have history, so you can revisit earlier
   days.
 - The **résumé indicator** by the date links to the [Résumé](#résumé) tab and

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from collections.abc import Callable
 
 import llm
 from db import db_connect
@@ -165,22 +166,28 @@ def judge_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
     return score_reply(data, cfg) if data is not None else {}
 
 
-def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Job]:
+def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict,
+                       shortlist: int | None = None,
+                       on_progress: Callable[[int, int], None] | None = None,
+                       ) -> list[Job]:
     """Re-rank keyword-gated jobs by LLM-judged fit with the resume.
 
-    LLM score is primary, keyword score the tiebreak. Jobs below
+    The top `shortlist` jobs by keyword score (default `[resume].shortlist`)
+    are judged, one LLM call each; `on_progress(done, total)` fires after
+    each. LLM score is primary, keyword score the tiebreak. Jobs below
     `[resume].min_llm_score` are dropped. If the LLM backend is unreachable
     the stage is a no-op and the keyword order is returned untouched.
     """
     r = cfg.get("resume", {})
-    shortlist = r.get("shortlist", 30)
+    if shortlist is None:
+        shortlist = r.get("shortlist", 30)
     floor = r.get("min_llm_score", 5)
 
     ranked = sorted(jobs, key=lambda j: j.score, reverse=True)
     head, tail = ranked[:shortlist], ranked[shortlist:]
 
     scored: list[Job] = []
-    for job in head:
+    for i, job in enumerate(head, 1):
         result = judge_fit(job, profile_text, cfg)
         if result is None:  # backend died mid-run: keep the keyword order
             return jobs
@@ -188,6 +195,8 @@ def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict) -> list[Jo
         job.fit_note = result.get("fit", "")
         job.fit_detail = result.get("detail", {})
         scored.append(job)
+        if on_progress:
+            on_progress(i, len(head))
 
     if floor:
         scored = [j for j in scored if (j.llm_score or 0) >= floor]

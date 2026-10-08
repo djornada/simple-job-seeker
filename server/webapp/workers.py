@@ -26,15 +26,22 @@ from .state import (
 )
 
 
+def _build_progress(text: str) -> None:
+    with BUILD_LOCK:
+        BUILD["progress"] = text
+
+
 def build_worker(with_notes: bool) -> None:
     try:
         cfg = load_config()
         conn = db_connect()
-        limit = cfg["targets"].get("per_day", 10)
-        queue = build_queue(conn, cfg, limit)
+        limit = cfg["targets"].get("per_day", 30)
+        queue = build_queue(conn, cfg, limit, on_progress=lambda done, total:
+                            _build_progress(f"scoring fit {done}/{total}"))
         notes: dict[str, str] = {}
         if with_notes:
-            for j in queue:
+            for i, j in enumerate(queue, 1):
+                _build_progress(f"drafting notes {i}/{len(queue)}")
                 note = draft_note(j, cfg)
                 if note:
                     notes[j.uid] = note
@@ -47,6 +54,7 @@ def build_worker(with_notes: bool) -> None:
     with BUILD_LOCK:
         BUILD["running"] = False
         BUILD["error"] = error
+        BUILD["progress"] = ""
 
 
 def note_worker(date: str, uid: str) -> None:

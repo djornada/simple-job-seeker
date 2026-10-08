@@ -46,8 +46,10 @@ gitignored like the rest of your data.
 
 ### 1. The queue re-ranks by fit
 
-After the usual keyword gate, the top `[resume] shortlist` jobs (default 30)
-are sent to your local model **one at a time**, each paired with your profile.
+After the usual keyword gate, the top keyword-ranked jobs are sent to your
+local model **one at a time**, each paired with your profile: 1.5 ×
+`[targets] per_day` of them (45 for a queue of 30), or `[resume] shortlist`
+if that's more. The extra half covers the jobs `min_llm_score` drops.
 The model replies with:
 
 ```json
@@ -128,7 +130,7 @@ The two knobs live in `[resume]`:
 
 ```toml
 [resume]
-shortlist = 30       # jobs sent to the LLM re-rank after the keyword gate
+shortlist = 30       # min jobs sent to the LLM re-rank after the keyword gate
 min_llm_score = 5    # drop jobs the model scores below this (0 disables)
 ```
 

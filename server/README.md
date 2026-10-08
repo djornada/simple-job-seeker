@@ -135,7 +135,7 @@ the saved posting and `/applications`, and sort last on the queue page.
 
 Everything lives in `config.toml`:
 
-- `per_day` — queue size (10 is plenty; you won't act on more)
+- `per_day` — queue size (30 by default; worked cards collapse to one line)
 - `company_cooldown_days` — avoid pestering the same company
 - `role_keywords` / `stack_keywords` / `exclude_keywords` — scoring
 - `people_roles` — who to look for (recruiters, EMs, heads of eng…)
@@ -148,7 +148,9 @@ Everything lives in `config.toml`:
   computed by the pipeline rather than the model, with weights from
   `[resume.weights]` (30 / 25 / 15 / 30 by default). Verdict: strong ≥ 75,
   good ≥ 60, moderate ≥ 45, weak ≥ 30, poor below.
-  - `shortlist` — how many keyword-ranked jobs get judged (one LLM call each)
+  - `shortlist` — the minimum number of keyword-ranked jobs that get judged
+    (one LLM call each); a build judges 1.5 × `per_day` when that's more, so
+    the `min_llm_score` cut still leaves a full queue
   - `min_llm_score` — drop jobs whose overall / 10 is below this (0 disables)
   - `goals` — optional free text about what you want next; the career
     dimension judges against it (otherwise against your profile's

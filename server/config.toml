@@ -1,7 +1,7 @@
 # Daily queue agent — configuration
 
 [targets]
-per_day = 10                  # how many companies per daily queue
+per_day = 30                  # how many companies per daily queue
 company_cooldown_days = 30    # don't re-queue the same company within N days
 # roles to look for at each company (used to build LinkedIn search links)
 people_roles = ["Technical Recruiter", "Engineering Manager"]
@@ -69,7 +69,7 @@ region_only = [
 # imported profile (python profile.py import <export.zip>). With no profile
 # or Ollama down, the pipeline stays keyword-only.
 [resume]
-shortlist = 30       # jobs sent to LLM re-rank after keyword gate
+shortlist = 30       # min jobs sent to LLM re-rank (a build judges 1.5x per_day if more)
 min_llm_score = 5    # drop jobs scoring below this, 0-10 (0 disables)
 # Optional: what you want next, so the "career" dimension has something to
 # judge against (otherwise the model reads your profile's trajectory).
