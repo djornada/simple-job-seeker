@@ -39,6 +39,7 @@ from .links import build_links
 from .rate import rate_jobs
 from .render import render, show_stats
 from .resume import (
+    NOTE_LIMIT,
     draft_note,
     judge_fit,
     load_profile_bits,
@@ -48,7 +49,7 @@ from .resume import (
 from .scoring import score_job
 from .select import select_queue
 
-__all__ = ["build_links", "build_queue", "check_coverage", "check_gates",
-           "draft_note", "judge_fit", "load_profile_bits", "load_profile_text",
-           "rate_jobs", "recheck", "render", "rerank_with_resume", "score_job",
-           "select_queue", "show_stats"]
+__all__ = ["NOTE_LIMIT", "build_links", "build_queue", "check_coverage",
+           "check_gates", "draft_note", "judge_fit", "load_profile_bits",
+           "load_profile_text", "rate_jobs", "recheck", "render",
+           "rerank_with_resume", "score_job", "select_queue", "show_stats"]

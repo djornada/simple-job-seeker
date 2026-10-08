@@ -7,7 +7,7 @@ import json
 import sqlite3
 import urllib.parse
 
-from pipeline import build_links
+from pipeline import NOTE_LIMIT, build_links
 from sources import Job
 from utils import load_config
 
@@ -40,26 +40,33 @@ ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid)
 
 def note_block(date: str, uid: str, note: str | None, pending: bool,
                failed: bool) -> str:
-    """The note area for one item: existing note, pending, or draft button.
+    """The note area for one item: pending, or the last failure, existing
+    note and a draft / redraft / retry button.
 
     Carries its own `hx-get` poll while pending; the poll response omits
     that attribute once the note resolves, so `outerHTML` swaps stop it.
+    A failed redraft keeps the old note (note_worker only writes on
+    success), so it shows under the failure line.
     """
-    if note:
-        inner = (f'<p class="note">“{esc(note)}”'
-                 f'<span class="len">{len(note)}/200</span></p>')
-    elif pending:
+    if pending:
         inner = '<p class="note pending">drafting note…</p>'
     else:
         failed_html = (
             '<p class="note failed">draft failed — LLM unreachable or '
             'rate-limited (check the server log)</p>' if failed else "")
-        label = "Try again" if failed else "Draft connection note"
-        inner = (f'{failed_html}'
-                 f'<form method="post" action="/note" style="margin:8px 0 0">'
+        note_html = (f'<p class="note">“{esc(note)}”'
+                     f'<span class="len">{len(note)}/{NOTE_LIMIT}</span></p>'
+                     if note else "")
+        label = ("Try again" if failed else
+                 "Redraft" if note else "Draft connection note")
+        inner = (f'{failed_html}{note_html}'
+                 f'<form method="post" action="/note" hx-post="/note" '
+                 f'hx-target="closest .notewrap" hx-swap="outerHTML" '
+                 f'style="margin:{"4px" if note else "8px"} 0 0">'
                  f'<input type="hidden" name="date" value="{esc(date)}">'
                  f'<input type="hidden" name="uid" value="{esc(uid)}">'
-                 f'<button class="ghost">{label}</button></form>')
+                 f'<button class="{"linkbtn" if note else "ghost"}">{label}'
+                 f'</button></form>')
     poll = ""
     if pending:
         qs = urllib.parse.urlencode({"date": date, "uid": uid})

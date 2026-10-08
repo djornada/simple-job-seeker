@@ -90,7 +90,11 @@ component (e.g. `extension/`).
   deterministic: whole-word in the profile text is `covered`, another
   alias spelling `synonym`, else `missing`; rows sorted missing-required
   first; None = LLM unreachable, {} = no usable terms); `draft_note`
-  writes sub-200-char connection notes, profile readers included; with no
+  writes `NOTE_LIMIT` (200)-char connection notes in the candidate's voice
+  to an unnamed `people_roles` reader — role + company first, then one
+  result; `_tidy_note` strips named greetings/sign-offs, an over-long
+  draft gets one retry with its length fed back, then `_fit_note` cuts at
+  the last full sentence — profile readers included; with no
   profile or the backend down the pipeline stays keyword-only and notes
   return None); `build.py` (`build_queue`: the
   shared use case — collect → select → optional re-rank — consumed

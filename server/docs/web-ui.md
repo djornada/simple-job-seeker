@@ -57,7 +57,10 @@ why it fits / what to emphasize`).
 
 **Connection notes:** click **Draft connection note** to have the local model
 write one (it appears with a live character count, capped at 200). Notes draft
-in the background — the card shows "drafting note…" until it's ready.
+in the background — the card shows "drafting note…" until it's ready. Click
+**Redraft** under a note to replace it; if the redraft fails, the old note
+stays. See [Résumé matching](resume-matching.md#2-connection-notes-get-personal)
+for how notes are written.
 
 **Keyword coverage:** with a saved posting and an imported résumé, click
 **Check keywords** to list the skills the posting asks for and whether your

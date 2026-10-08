@@ -65,6 +65,14 @@ The draft-note prompt swaps its generic "senior engineer" description for your
 real headline, skills, and full experience, so notes are grounded in your
 actual background — the model can reference a role or project that fits.
 
+Notes are written in your voice, to the recruiter or engineering manager you
+look up through the card's links (`[targets] people_roles`), whose name you
+don't know yet. Two short sentences: the role and company first, then one
+concrete result of yours that fits. No names at all, no signature. The code
+enforces what the model can get wrong: a named greeting ("Hi Sam,") becomes
+"Hi,", a sign-off is dropped, and a draft over 200 characters gets one retry
+and is then cut at its last full sentence, never mid-word.
+
 ### 3. Stats gain a fit-score breakdown
 
 The [Stats](web-ui.md#stats) page adds a conversion funnel by fit-score band
