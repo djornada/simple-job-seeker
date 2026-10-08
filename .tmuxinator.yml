@@ -1,7 +1,7 @@
 name: job-seeker
-root: server
 startup_window: shell
+on_project_stop: docker compose down
 
 windows:
-  - web: python3 -m webapp
+  - web: docker compose up
   - shell:
