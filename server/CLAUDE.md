@@ -34,7 +34,9 @@ component (e.g. `extension/`).
   code (the web server ensures schemas at startup). All
   schemas use CREATE TABLE IF NOT EXISTS, so creation order doesn't matter.
   Both queue_agent.py and webapp/ import straight from here.
-- sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`),
+- sources/ — one module per job board (`remoteok`, `remotive`, `wwr`, `hn`,
+  `freehire` — freehire.me's ATS aggregator; `_location` appends
+  "Worldwide"/"Brazil" from its resolved geography for the region filter),
   each exposing a uniform `fetch(cfg) -> list[Job]`. `sources/base.py` holds
   the shared `Job` model, `_get`, and `strip_html` (`limit=None` keeps the
   whole text). Each source sets `Job.full_text` to the untruncated posting

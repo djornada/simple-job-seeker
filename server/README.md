@@ -30,7 +30,8 @@ python3 queue_agent.py --recheck   # mark archived postings that were taken down
 
 Each run:
 
-1. Fetches RemoteOK (JSON API), Remotive (API), We Work Remotely (RSS)
+1. Fetches RemoteOK (JSON API), Remotive (API), We Work Remotely (RSS),
+   HN "Who is hiring?" and freehire.me (one API over ~50 ATS boards)
 2. Scores jobs: role keyword in title required; stack keywords add points
 3. Drops non-Brazil-friendly locations (`brazil_friendly_only`) and,
    with `[gates]` set, postings you can't be hired for (language,

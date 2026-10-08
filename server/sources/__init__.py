@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import sys
 
-from . import hn, remoteok, remotive, wwr
+from . import freehire, hn, remoteok, remotive, wwr
 from .base import Job, http_is_live, is_linkedin, strip_html
 
 REGISTRY = {
@@ -26,6 +26,7 @@ REGISTRY = {
     "remotive": remotive.fetch,
     "wwr": wwr.fetch,
     "hn": hn.fetch,
+    "freehire": freehire.fetch,
 }
 
 LIVENESS = {
@@ -33,6 +34,7 @@ LIVENESS = {
     "remotive": http_is_live,
     "wwr": wwr.is_live,
     "hn": hn.is_live,
+    "freehire": http_is_live,
 }
 
 __all__ = ["Job", "LIVENESS", "REGISTRY", "collect_jobs", "http_is_live",

@@ -32,19 +32,28 @@ Which job boards to pull from, and their per-source settings.
 
 ```toml
 [sources]
-enabled = ["remoteok", "remotive", "wwr", "hn"]
+enabled = ["remoteok", "remotive", "wwr", "hn", "freehire"]
 remotive_searches = ["react", "frontend", "full stack", "node"]
 wwr_feeds = [
     "https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss",
     "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
 ]
+freehire_searches = ["react", "frontend", "full stack", "node"]
+freehire_regions = ["latam", "global"]
+freehire_countries = ["br"]
+freehire_days = 14
+freehire_skip = ["remotive", "whatjobs"]
 ```
 
 | Key | Meaning |
 | --- | --- |
-| `enabled` | The active sources. Available: `remoteok`, `remotive`, `wwr`, `hn` (Hacker News "Who is hiring?"). Remove one to disable it. |
+| `enabled` | The active sources. Available: `remoteok`, `remotive`, `wwr`, `hn` (Hacker News "Who is hiring?"), `freehire` (freehire.me, one API over ~50 ATS boards: Greenhouse, Lever, Ashby, Gupy, GetOnBrd…). Remove one to disable it. |
 | `remotive_searches` | Search terms queried against the Remotive API. |
 | `wwr_feeds` | We Work Remotely RSS category feeds to read. |
+| `freehire_searches` | Search terms queried against freehire.me (remote roles only, 50 per term). |
+| `freehire_regions` / `freehire_countries` | freehire's resolved geography (`latam`, `global`, `eu`, …; ISO alpha-2 codes), OR'd into one filter. A job tagged `global` or `br` gets "Worldwide"/"Brazil" appended to its location so `brazil_friendly_only` sees it; a bare LATAM country doesn't. |
+| `freehire_days` | Only postings from the last N days. |
+| `freehire_skip` | freehire sub-sources to drop, by prefix: `remotive` duplicates that source, `whatjobs` links are paid-click redirects. |
 
 Adding a whole new board is a code change, not a config one — see
 [Architecture → Sources](architecture.md#sources).

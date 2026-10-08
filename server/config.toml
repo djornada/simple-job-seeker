@@ -7,12 +7,21 @@ company_cooldown_days = 30    # don't re-queue the same company within N days
 people_roles = ["Technical Recruiter", "Engineering Manager"]
 
 [sources]
-enabled = ["remoteok", "remotive", "wwr", "hn"]  # hn = HN "Who is hiring?"
+enabled = ["remoteok", "remotive", "wwr", "hn", "freehire"]  # hn = HN "Who is hiring?"
 remotive_searches = ["react", "frontend", "full stack", "node"]
 wwr_feeds = [
     "https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss",
     "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
 ]
+# freehire.me: one API over ~50 ATS boards (Greenhouse, Lever, Ashby, Gupy...).
+# Remote roles only; regions and countries are OR'd into one location filter.
+freehire_searches = ["react", "frontend", "full stack", "node"]
+freehire_regions = ["latam", "global"]
+freehire_countries = ["br"]
+freehire_days = 14  # posted within the last N days
+# freehire sub-sources to drop (prefix match): remotive is already a source,
+# whatjobs-* links are paid-click redirects
+freehire_skip = ["remotive", "whatjobs"]
 
 [filters]
 # at least one role keyword must match the job TITLE

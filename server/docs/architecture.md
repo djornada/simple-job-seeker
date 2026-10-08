@@ -31,7 +31,7 @@ database, and one config file. No framework, no third-party packages.
 ```mermaid
 flowchart TD
     subgraph sources["sources/ (per-board fetchers)"]
-        RO[remoteok] & RE[remotive] & WWR[wwr] & HN[hn]
+        RO[remoteok] & RE[remotive] & WWR[wwr] & HN[hn] & FH[freehire]
     end
     sources -->|collect_jobs| GATE[keyword score + region filter]
     GATE --> DEDUP[dedupe to one company / cooldown]
@@ -61,6 +61,7 @@ sources/
   remotive.py   # fetch(cfg)
   wwr.py        # fetch(cfg)
   hn.py         # fetch(cfg)  — Hacker News "Who is hiring?"
+  freehire.py   # fetch(cfg)  — freehire.me, one API over ~50 ATS boards
   __init__.py   # facade: REGISTRY + collect_jobs()
 ```
 
