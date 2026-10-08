@@ -1,0 +1,11 @@
+name: job-seeker
+
+services:
+  web:
+    build: ./server
+    image: simple-job-seeker
+    network_mode: host
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ./server:/app
+    restart: unless-stopped

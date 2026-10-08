@@ -1,0 +1,16 @@
+# local data and secrets: mounted from the host at runtime, never baked in
+state.db
+state.db-*
+queues/
+cron.log
+.env
+*.zip
+# not needed at runtime
+__pycache__/
+*.pyc
+.serena/
+.claude/
+.specs/
+docs/
+Dockerfile
+.dockerignore
