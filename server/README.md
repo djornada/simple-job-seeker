@@ -93,7 +93,7 @@ python3 tracker.py sweep        # quiet too long → no_response (asks y/N)
   --force` allows anything else (going backwards, reopening a final one).
 - One application per company + role. Every status change and follow-up
   is also logged as an outreach action, so `board`, `history` and the web
-  UI's `/board`, `/company` and `/stats` include it.
+  UI's `/board` and `/stats` include it.
 - Stale rules live in `config.toml`'s `[applications]`. "Quiet" counts
   days since the last status change or follow-up:
   - `followup_after_days` (10): `stale` and the web UI's `/due` suggest a

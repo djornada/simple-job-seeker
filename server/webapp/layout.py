@@ -1,7 +1,9 @@
-"""Page chrome: the HTML shell (`page`) and the outreach `timeline_row`."""
+"""Page chrome: the HTML shell (`page`), the outreach `timeline_row`, and
+links to a company's Board row (`company_href`)."""
 from __future__ import annotations
 
 import datetime as dt
+import re
 import sqlite3
 import urllib.parse
 
@@ -55,10 +57,21 @@ def timeline_row(r: sqlite3.Row, link_company: bool = False) -> str:
         fu = (f' <small style="color:var(--muted)">'
               f'[follow-up {r["followup_due"]}{state}]</small>')
     if link_company:
-        q = urllib.parse.quote(r["company"])
-        who = f'<a href="/company?name={q}">{esc(r["company"])}</a> · '
+        href = esc(company_href(r["company"]))
+        who = f'<a href="{href}">{esc(r["company"])}</a> · '
     else:
         who = ""
     return (f'<div class="rowline"><span class="when">{r["date"]}</span>'
             f'<span style="flex:1">{who}{esc(r["action"])}{person}{note}{fu}'
             f'</span></div>')
+
+
+def company_anchor(company: str) -> str:
+    """The id of a company's row on Board."""
+    return "co-" + re.sub(r"[^a-z0-9]+", "-", company.lower()).strip("-")
+
+
+def company_href(company: str) -> str:
+    """Link to a company's Board row, expanded to its timeline."""
+    return (f"/board?open={urllib.parse.quote(company)}"
+            f"#{company_anchor(company)}")

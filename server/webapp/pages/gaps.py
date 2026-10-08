@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import urllib.parse
 
 from pipeline import load_profile_bits
 from pipeline.keywords import alias_map, normalize
 from utils import load_config
 
-from ..layout import page
+from ..layout import company_href, page
 from ..state import db, esc
 
 WINDOWS = ("30", "90", "all")
@@ -80,7 +79,7 @@ def page_gaps(params: dict[str, list[str]]) -> str:
             if company not in seen:
                 seen.append(company)
         links = ", ".join(
-            f'<a href="/company?name={urllib.parse.quote(c)}">{esc(c)}</a>'
+            f'<a href="{esc(company_href(c))}">{esc(c)}</a>'
             for c in seen[:3])
         trs.append(f"<tr><td>{esc(skill)}</td><td>{g['postings']}</td>"
                    f"<td class='rate'>{g['weight']:.2f}</td>"

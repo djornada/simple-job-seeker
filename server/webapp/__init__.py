@@ -16,13 +16,14 @@ Usage:
     python -m webapp           # serve on http://127.0.0.1:3000
 
 Pages:
-    /            daily queue: check off targets, draft notes, rebuild
-    /board       pipeline overview by latest stage
-    /due         follow-ups due or overdue, close them
-    /log         log a touchpoint + recent activity
-    /company     full timeline for one company
-    /stats       source + fit-score effectiveness
-    /profile     import/replace the résumé export
+    /              daily queue: check off targets, draft notes, rebuild
+    /board         companies by latest stage; each row expands to its
+                   timeline; log touchpoints in a dialog (also on queue cards)
+    /applications  roles applied to, by status
+    /due           follow-ups due or overdue, close them
+    /stats         source + fit-score effectiveness
+    /gaps          skills the fit keeps flagging as missing
+    /profile       import/replace the résumé export
 """
 from .server import main
 

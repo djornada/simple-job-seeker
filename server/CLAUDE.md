@@ -150,15 +150,19 @@ component (e.g. `extension/`).
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
   (background build/note/coverage threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
-  module per route — queue, board, applications, due, log, company,
-  posting, stats, gaps, profile — with GET_ROUTES in its facade; add a
+  module per route — queue, board, applications, due, posting, stats,
+  gaps, profile, and logform: the log-touchpoint `<dialog>` Board and
+  queue cards share, filled by htmx from `/log-form` or rendered open by
+  `/board?log=` without JS — with GET_ROUTES in its facade; add a
   page by dropping a module and registering it, same recipe as sources/),
   `server.py` (Handler + `main`). Every module
   imports what it needs straight from `pipeline`/`db`/`sources`/`utils`
   rather than through queue_agent.py — the two adapters (CLI and web UI) sit
   side by side on the same core instead of one depending on the other. Daily
   queue with per-target check-off, fit notes, a résumé indicator, and LLM
-  note drafting, plus outreach board/due/log/history, a `/stats`
+  note drafting, plus an outreach board (rows expand to each company's
+  timeline; `POST /add` lands on `/board?open=<company>`, and the old
+  `/company`/`/log` URLs redirect there), due list, a `/stats`
   source-effectiveness page, and a `/profile` page to upload the LinkedIn
   export ZIP (parsed then `profile.ingest`; file is read locally, nothing is
   sent to LinkedIn). Builds run in a background thread; queue items persist

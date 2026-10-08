@@ -22,8 +22,9 @@ generates links. The click is still human.
 
 ## Navigation
 
-Six tabs across the top: **Queue · Board · Due · Log · Stats · Résumé**. The
-**Due** tab shows a badge with the number of follow-ups that need attention.
+Tabs across the top: **Queue · Board · Applications · Due · Stats · Gaps ·
+Résumé**. The **Due** tab shows a badge with the number of follow-ups that
+need attention.
 
 ---
 
@@ -56,6 +57,8 @@ Each card shows the **company**, a keyword-score badge, a meta line
   `[targets] people_roles` (e.g. Technical Recruiter, Engineering Manager) at
   that company.
 - **Google x-ray** — a `site:linkedin.com/in` search as a fallback.
+- **Log** — opens the [log dialog](#logging-a-touchpoint) with the company
+  filled in.
 
 If your résumé is imported, the card also shows a **fit note** (`fit 8/10 —
 why it fits / what to emphasize`).
@@ -83,11 +86,34 @@ then shows the table in place. See
 
 ## Board
 
-Your pipeline at a glance. Every company you've logged, grouped by the
-**furthest stage** it has reached (offer at the top, visited at the bottom).
-Click any company to open its [timeline](#company-timeline).
+Your pipeline at a glance. Every company you've logged, grouped by its
+**latest stage** (offer at the top, visited at the bottom). Each row shows
+the date of the last touch, the company, and its status; click it to expand
+the company's full timeline: how many times it's been queued, then every
+touchpoint in order. A company name anywhere else in the app (Due,
+Applications, Gaps, recent activity) opens its row here.
 
-Empty until you [log](#log) your first touchpoint.
+**Recent activity**, collapsed at the bottom, lists the last 25 touchpoints
+across all companies.
+
+Empty until you log your first touchpoint.
+
+### Logging a touchpoint
+
+**Log touchpoint** in the Board header opens a dialog over the page. The
+same dialog opens from **Log touchpoint** inside an expanded row and from
+**Log** on a queue card, with the company filled in. Pick the **company**
+(autocompletes from companies you've queued or contacted), optionally
+**who** you spoke with, the **action** (`visited`, `connected`, `messaged`,
+`replied`, `meeting`, `applied`, `rejected`, `offer`), an optional
+**follow-up in N days**, and a **note** for future-you.
+
+Saving lands on Board with that company's row expanded. **Cancel** or Esc
+closes the dialog without saving. Without JavaScript the buttons open
+`/board?log=<company>` with the form already showing.
+
+Logging is what powers the Board, Due, and Stats views. Old `/log` and
+`/company?name=` links redirect to Board.
 
 ---
 
@@ -96,26 +122,6 @@ Empty until you [log](#log) your first touchpoint.
 Follow-ups that are **due or overdue**, oldest first, each tagged if overdue.
 When you've done the follow-up, hit **Close** to clear it. This is your "don't
 let anything slip" list — the tab badge counts what's waiting.
-
----
-
-## Log
-
-Record a touchpoint. Pick the **company** (autocompletes from companies you've
-queued or contacted), optionally **who** you spoke with, the **action**
-(`visited`, `connected`, `messaged`, `replied`, `meeting`, `applied`,
-`rejected`, `offer`), an optional **follow-up in N days**, and a **note** for
-future-you. Recent activity is listed below the form.
-
-Logging here is what powers the Board, Due, and Stats views.
-
----
-
-## Company timeline
-
-Reached by clicking a company anywhere in the app. Shows how many times it's
-been queued and the full chronological history of your outreach, plus a
-shortcut to log a new touchpoint against it.
 
 ---
 

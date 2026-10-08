@@ -20,6 +20,7 @@ from sources import Job
 from utils import load_config
 
 from .assets import FAVICON, HTMX_JS
+from .layout import company_href
 from .multipart import parse_multipart
 from .pages import (
     GET_ROUTES,
@@ -87,11 +88,25 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/static/htmx.min.js":
             self.send_bytes(HTMX_JS, "text/javascript")
             return
+        # blank values kept: `/board?log=` opens an empty log dialog
+        params = urllib.parse.parse_qs(query, keep_blank_values=True)
+        if path == "/company":  # old links: the timeline is a Board row now
+            name = params.get("name", [""])[0].strip()
+            if name:
+                conn = db()
+                name = tracker.resolve_company(conn, name)
+                conn.close()
+            self.redirect(company_href(name) if name else "/board")
+            return
+        if path == "/log":  # old links: the form is Board's log dialog now
+            company = params.get("company", [""])[0]
+            self.redirect("/board?log=" + urllib.parse.quote(company))
+            return
         fn = GET_ROUTES.get(path)
         if fn is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
-        self.respond(fn(urllib.parse.parse_qs(query)))
+        self.respond(fn(params))
 
     def do_OPTIONS(self) -> None:
         origin = self.headers.get("Origin", "")
@@ -292,7 +307,7 @@ class Handler(BaseHTTPRequestHandler):
     def post_add(self, form: dict[str, list[str]]) -> None:
         company = form.get("company", [""])[0].strip()
         if not company:
-            self.redirect("/log")
+            self.redirect("/board?log=")
             return
         action = form.get("action", ["visited"])[0]
         if action not in tracker.ACTIONS:
@@ -311,7 +326,7 @@ class Handler(BaseHTTPRequestHandler):
             (company, person, action, note, today.isoformat(), due))
         conn.commit()
         conn.close()
-        self.redirect(f"/company?name={urllib.parse.quote(company)}")
+        self.redirect(company_href(company))
 
     def post_done(self, form: dict[str, list[str]]) -> None:
         raw = form.get("id", [""])[0]

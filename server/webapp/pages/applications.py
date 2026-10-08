@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import sqlite3
-import urllib.parse
 
 from db import applications as apps_db
 
-from ..layout import page
+from ..layout import company_href, page
 from ..state import db, esc
 
 
@@ -25,7 +24,7 @@ def render_app(a: sqlite3.Row, error: str = "", expired: str = "") -> str:
     """One application row with its move/follow-up forms. Shared by the
     page and the htmx fragment `POST /applications/move|followup` return.
     `expired` is the posting's expired_at, when the board took it down."""
-    q = urllib.parse.quote(a["company"])
+    href = esc(company_href(a["company"]))
     post = (f' · <a href="{esc(a["url"])}" target="_blank" rel="noopener">'
             'job post</a>' if a["url"] else "")
     meta = (f'<span class="status">{esc(a["status"])}</span> '
@@ -53,7 +52,7 @@ def render_app(a: sqlite3.Row, error: str = "", expired: str = "") -> str:
     return f"""
 <div class="rowline app" id="app-{a['id']}">
   <span class="when">{a['applied_on']}</span>
-  <span style="flex:1"><a href="/company?name={q}">{esc(a['company'])}</a>
+  <span style="flex:1"><a href="{href}">{esc(a['company'])}</a>
     · {esc(a['role'])}{post} {meta}{err}</span>
   <div class="appactions">{actions}</div>
 </div>"""

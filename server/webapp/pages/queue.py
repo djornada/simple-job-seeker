@@ -25,6 +25,7 @@ from ..state import (
     db,
     esc,
 )
+from .logform import log_button, log_dialog
 
 
 # Queue rows plus whether the posting text is archived, when it was found
@@ -169,6 +170,7 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
     for label, url in build_links(job, cfg).items():
         linkrow.append(f'<a href="{esc(url)}" target="_blank" '
                        f'rel="noopener">{esc(label)}</a>')
+    linkrow.append(log_button(r["company"], "Log", "linkbtn"))
     if r["app_id"]:
         linkrow.append(f'<a href="/applications#app-{r["app_id"]}">applied ✓</a>')
     else:
@@ -219,7 +221,7 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
   <div style="flex:1">
     <h2>{esc(r['company'])} <span class="score">{r['score']:g}</span></h2>
     <p class="meta">{' · '.join(meta_bits)}</p>
-    <p class="linkrow">{' '.join(linkrow)}</p>
+    <div class="linkrow">{' '.join(linkrow)}</div>
     {fit_html}
     {flags_html}
     {coverage_html}
@@ -370,4 +372,5 @@ def page_queue(params: dict[str, list[str]]) -> str:
         items.append('<p class="hint">Checklist per target: visit 2–3 profiles '
                      '→ connect with note → tick it off.</p>')
 
-    return page(f"Queue {date}", "/", build_section + datenav + "".join(items))
+    return page(f"Queue {date}", "/",
+                log_dialog() + build_section + datenav + "".join(items))

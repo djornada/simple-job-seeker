@@ -4,19 +4,18 @@ from __future__ import annotations
 
 import datetime as dt
 import sqlite3
-import urllib.parse
 
 from db import applications as apps_db
 from utils import load_config
 
-from ..layout import page
+from ..layout import company_href, page
 from ..state import db, esc
 
 
 def _app_line(a: sqlite3.Row, max_followups: int) -> str:
-    q = urllib.parse.quote(a["company"])
+    href = esc(company_href(a["company"]))
     return (f'<span class="when">{a["last_activity"]}</span>'
-            f'<span style="flex:1"><a href="/company?name={q}">'
+            f'<span style="flex:1"><a href="{href}">'
             f'{esc(a["company"])}</a> · {esc(a["role"])} '
             f'<small style="color:var(--muted)">[{esc(a["status"])}, quiet '
             f'{apps_db.quiet_days(a)}d, follow-ups {a["followups_sent"]}/'
@@ -81,11 +80,11 @@ def page_due(params: dict[str, list[str]]) -> str:
                    if r["followup_due"] < today else "")
         person = f" · {esc(r['person'])}" if r["person"] else ""
         note = f" — {esc(r['note'])}" if r["note"] else ""
-        q = urllib.parse.quote(r["company"])
+        href = esc(company_href(r["company"]))
         lines.append(f"""
 <div class="rowline">
   <span class="when">{r['followup_due']}</span>
-  <span style="flex:1">{overdue}<a href="/company?name={q}">{esc(r['company'])}</a>{person}
+  <span style="flex:1">{overdue}<a href="{href}">{esc(r['company'])}</a>{person}
     <small style="color:var(--muted)">[last: {esc(r['action'])}]</small>{note}</span>
   <form method="post" action="/done">
     <input type="hidden" name="id" value="{r['id']}">

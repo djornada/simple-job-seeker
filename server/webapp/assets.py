@@ -76,7 +76,8 @@ article.target h2 { font-size: 16px; margin: 0; display: flex; gap: 8px;
   color: var(--muted); border: 1px solid var(--line); padding: 0 5px;
   border-radius: 8px; }
 p.meta { margin: 2px 0 6px; color: var(--muted); font-size: 13px; }
-p.linkrow { margin: 0; font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
+/* a div: its inline forms (Log, I applied) would close a <p> */
+.linkrow { margin: 0; font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
 p.note { margin: 8px 0 0; font-size: 13.5px; background: var(--paper);
   border-radius: 6px; padding: 8px 10px; }
 p.note .len { font-family: var(--mono); font-size: 11px; color: var(--muted);
@@ -135,13 +136,35 @@ button.ghost { background: none; border: 1px solid var(--line);
   color: var(--accent-ink); cursor: pointer; }
 button.ghost:hover { border-color: var(--accent); }
 section.stage { margin: 26px 0; }
-section.stage h2 { font-family: var(--mono); font-size: 12px;
+section.stage h2, details.recent > summary { font-family: var(--mono);
+  font-size: 12px;
   letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
   border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 0 0 4px; }
 .rowline { display: flex; gap: 14px; padding: 7px 2px; align-items: baseline;
   border-bottom: 1px solid var(--line); font-size: 14px; }
-.rowline .when { font-family: var(--mono); font-size: 12px; color: var(--muted);
-  min-width: 88px; }
+.rowline .when, details.co > summary .when { font-family: var(--mono);
+  font-size: 12px; color: var(--muted); min-width: 88px; }
+/* Board: one row per company, expanding to its timeline */
+details.co { border-bottom: 1px solid var(--line); }
+details.co > summary { display: flex; gap: 14px; padding: 7px 2px;
+  align-items: baseline; font-size: 14px; cursor: pointer; list-style: none; }
+details.co > summary::-webkit-details-marker { display: none; }
+details.co > summary::before { content: "▸"; color: var(--muted); width: 8px; }
+details.co[open] > summary::before { content: "▾"; }
+details.co > summary .name { flex: 1; }
+details.co > summary:hover .name { color: var(--accent-ink); }
+details.co .tl { margin: 0 0 12px 22px; }
+details.co .tl p.meta { margin: 0 0 2px; }
+details.co .tl .rowline { font-size: 13.5px; }
+.tlactions { margin: 6px 0 0; }
+details.recent { margin: 26px 0; }
+details.recent > summary { cursor: pointer; }
+dialog.logdlg { border: 0; padding: 0; background: none;
+  width: min(560px, calc(100vw - 32px)); }
+dialog.logdlg::backdrop { background: rgb(23 37 31 / .4); }
+dialog.logdlg form.logform { margin: 0; box-shadow: 0 12px 32px rgb(0 0 0 / .18); }
+dialog.logdlg h2 { font-size: 16px; margin: 0; }
+.dlgbtns { display: flex; gap: 10px; align-items: center; }
 .tag-overdue { font-family: var(--mono); font-size: 11px; color: var(--amber);
   background: var(--amber-bg); padding: 0 6px; border-radius: 8px; }
 form.logform { background: var(--card); border: 1px solid var(--line);
@@ -179,8 +202,8 @@ button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
 """
 
 TABS = [("/", "Queue"), ("/board", "Board"), ("/applications", "Applications"),
-        ("/due", "Due"), ("/log", "Log"), ("/stats", "Stats"),
-        ("/gaps", "Gaps"), ("/profile", "Résumé")]
+        ("/due", "Due"), ("/stats", "Stats"), ("/gaps", "Gaps"),
+        ("/profile", "Résumé")]
 
 # favicon lives at the project root; loaded once, served as static bytes
 try:
