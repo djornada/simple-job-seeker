@@ -20,14 +20,14 @@ def page(title: str, active: str, body: str) -> str:
         "SELECT COUNT(*) FROM outreach WHERE followup_due IS NOT NULL "
         "AND followup_done = 0 AND followup_due <= ?",
         (dt.date.today().isoformat(),)).fetchone()[0]
-    cfg = load_config()  # quiet applications count toward the Due badge
+    cfg = load_config()  # quiet applications count toward Board's badge
     due_n += len({a["id"] for a in apps_db.stale(conn, cfg)
                   + apps_db.sweep_candidates(conn, cfg)})
     conn.close()
     nav = []
     for href, label in TABS:
         cls = ' class="active"' if href == active else ""
-        badge = f'<span class="badge">{due_n}</span>' if href == "/due" and due_n else ""
+        badge = f'<span class="badge">{due_n}</span>' if href == "/board" and due_n else ""
         nav.append(f'<a href="{href}"{cls}>{label}{badge}</a>')
     return f"""<!doctype html>
 <html lang="en"><head>

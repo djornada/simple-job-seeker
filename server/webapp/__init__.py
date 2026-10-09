@@ -17,10 +17,11 @@ Usage:
 
 Pages:
     /              daily queue: check off targets, draft notes, rebuild
-    /board         companies by latest stage; each row expands to its
-                   timeline; log touchpoints in a dialog (also on queue cards)
+    /board         what's due (follow-ups, quiet applications, the
+                   no-response sweep), then companies by latest stage; each
+                   row expands to its timeline; log touchpoints in a dialog
+                   (also on queue cards)
     /applications  roles applied to, by status
-    /due           follow-ups due or overdue, close them
     /stats         source + fit-score effectiveness
     /gaps          skills the fit keeps flagging as missing
     /profile       import/replace the résumé export

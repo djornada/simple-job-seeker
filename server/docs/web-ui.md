@@ -22,9 +22,9 @@ generates links. The click is still human.
 
 ## Navigation
 
-Tabs across the top: **Queue · Board · Applications · Due · Stats · Gaps ·
-Résumé**. The **Due** tab shows a badge with the number of follow-ups that
-need attention.
+Tabs across the top: **Queue · Board · Applications · Stats · Gaps · Résumé**.
+The **Board** tab shows a badge with the number of things that need
+attention: follow-ups due and applications gone quiet.
 
 ---
 
@@ -86,12 +86,13 @@ then shows the table in place. See
 
 ## Board
 
-Your pipeline at a glance. Every company you've logged, grouped by its
-**latest stage** (offer at the top, visited at the bottom). Each row shows
-the date of the last touch, the company, and its status; click it to expand
-the company's full timeline: how many times it's been queued, then every
-touchpoint in order. A company name anywhere else in the app (Due,
-Applications, Gaps, recent activity) opens its row here.
+Your pipeline at a glance. On top, a [due](#due) section when something
+needs you. Below it, every company you've logged, grouped by its **latest
+stage** (offer at the top, visited at the bottom). Each row shows the date
+of the last touch, the company, and its status; click it to expand the
+company's full timeline: how many times it's been queued, then every
+touchpoint in order. A company name anywhere else in the app (the due
+section, Applications, Gaps, recent activity) opens its row here.
 
 **Recent activity**, collapsed at the bottom, lists the last 25 touchpoints
 across all companies.
@@ -112,16 +113,23 @@ Saving lands on Board with that company's row expanded. **Cancel** or Esc
 closes the dialog without saving. Without JavaScript the buttons open
 `/board?log=<company>` with the form already showing.
 
-Logging is what powers the Board, Due, and Stats views. Old `/log` and
-`/company?name=` links redirect to Board.
+Logging is what powers Board and Stats. Old `/log` and `/company?name=`
+links redirect to Board.
 
----
+### Due
 
-## Due
+The "don't let anything slip" list, at the top of Board and only when
+something is waiting (the Board tab's badge counts it):
 
-Follow-ups that are **due or overdue**, oldest first, each tagged if overdue.
-When you've done the follow-up, hit **Close** to clear it. This is your "don't
-let anything slip" list — the tab badge counts what's waiting.
+- **Follow-ups** due or overdue, oldest first, each tagged if overdue. When
+  you've done the follow-up, hit **Close** to clear it.
+- **Gone quiet — follow up:** applications quiet long enough to nudge. Write
+  the follow-up yourself, then hit **Followed up** to reset the clock.
+- **Quiet N+ days — no response?** Applications quiet too long. **Mark as no
+  response…** only shows a confirm step; nothing moves until you hit
+  **Confirm**.
+
+Every button lands back on Board. Old `/due` links redirect there.
 
 ---
 

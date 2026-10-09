@@ -2,10 +2,10 @@
 stale rules that surface the ones gone quiet.
 
 `outreach_connect` runs `APPLICATIONS_SCHEMA`. Every change also appends an
-outreach event (status as `action`), so the board, history, /company and
-/stats see it without knowing this table exists. Shared by tracker.py and
-webapp/ (the /applications page, the queue card's "I applied" button and
-/due's gone-quiet section). Expects a sqlite3.Row connection (both
+outreach event (status as `action`), so the board, history and /stats see
+it without knowing this table exists. Shared by tracker.py and webapp/
+(the /applications page, the queue card's "I applied" button and Board's
+due section). Expects a sqlite3.Row connection (both
 `outreach_connect` and `connect` are). Nothing here sends anything on
 your behalf.
 """

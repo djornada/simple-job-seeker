@@ -1,5 +1,5 @@
-"""`/due` — follow-ups due or overdue, applications gone quiet, and the
-two-step no-response sweep."""
+"""Board's due section: follow-ups due or overdue, applications gone quiet,
+and the two-step no-response sweep. Renders nothing when nothing is due."""
 from __future__ import annotations
 
 import datetime as dt
@@ -8,7 +8,7 @@ import sqlite3
 from db import applications as apps_db
 from utils import load_config
 
-from ..layout import company_href, page
+from ..layout import company_href
 from ..state import db, esc
 
 
@@ -22,22 +22,21 @@ def _app_line(a: sqlite3.Row, max_followups: int) -> str:
             f'{max_followups}]</small></span>')
 
 
-def _quiet_sections(stale: list[sqlite3.Row], sweep: list[sqlite3.Row],
-                    rules: dict, confirm: bool) -> str:
+def _quiet_groups(stale: list[sqlite3.Row], sweep: list[sqlite3.Row],
+                  rules: dict, confirm: bool) -> str:
     """Applications due a follow-up, then the no-response sweep: a list
-    with a button that only leads to a confirm step, never moves directly."""
+    with a link that only leads to a confirm step, never moves directly."""
     html = ""
     if stale:
         lines = "".join(f"""
 <div class="rowline">{_app_line(a, rules['max_followups'])}
   <form method="post" action="/applications/followup">
     <input type="hidden" name="id" value="{a['id']}">
-    <input type="hidden" name="back" value="/due">
+    <input type="hidden" name="back" value="/board">
     <button class="ghost" title="you followed up by hand">Followed up</button>
   </form>
 </div>""" for a in stale)
-        html += (f'<section class="stage"><h2>gone quiet — follow up</h2>'
-                 f'{lines}</section>')
+        html += f'<h3>gone quiet — follow up</h3>{lines}'
     if sweep:
         days = rules["no_response_after_days"]
         lines = "".join(f'<div class="rowline">'
@@ -49,16 +48,16 @@ def _quiet_sections(stale: list[sqlite3.Row], sweep: list[sqlite3.Row],
             step = (f'<form class="sweep" method="post" action="/applications/sweep">'
                     f'{ids}<span>Move these {len(sweep)} to no_response?</span>'
                     f'<button class="primary">Confirm</button> '
-                    f'<a href="/due">Cancel</a></form>')
+                    f'<a href="/board">Cancel</a></form>')
         else:
-            step = (f'<p class="sweep"><a href="/due?sweep=confirm">Mark '
+            step = (f'<p class="sweep"><a href="/board?sweep=confirm">Mark '
                     f'{len(sweep)} as no response…</a></p>')
-        html += (f'<section class="stage"><h2>quiet {days}+ days — no '
-                 f'response?</h2>{lines}{step}</section>')
+        html += f'<h3>quiet {days}+ days — no response?</h3>{lines}{step}'
     return html
 
 
-def page_due(params: dict[str, list[str]]) -> str:
+def due_section(params: dict[str, list[str]]) -> str:
+    """The top of Board; `?sweep=confirm` shows the sweep's confirm step."""
     conn = db()
     today = dt.date.today().isoformat()
     rows = conn.execute(
@@ -69,11 +68,10 @@ def page_due(params: dict[str, list[str]]) -> str:
     stale = apps_db.stale(conn, cfg)
     sweep = apps_db.sweep_candidates(conn, cfg)
     conn.close()
-    quiet = _quiet_sections(stale, sweep, apps_db.rules(cfg),
-                            params.get("sweep", [""])[0] == "confirm")
+    quiet = _quiet_groups(stale, sweep, apps_db.rules(cfg),
+                          params.get("sweep", [""])[0] == "confirm")
     if not rows and not quiet:
-        return page("Due", "/due",
-                    '<p class="empty">Nothing due. Go write a post instead.</p>')
+        return ""
     lines = []
     for r in rows:
         overdue = ('<span class="tag-overdue">overdue</span> '
@@ -91,6 +89,7 @@ def page_due(params: dict[str, list[str]]) -> str:
     <button class="ghost">Close</button>
   </form>
 </div>""")
-    body = (f'<section class="stage"><h2>follow-ups due</h2>'
-            f'{"".join(lines)}</section>') if lines else ""
-    return page("Due", "/due", body + quiet)
+    follow = f'<h3>follow-ups</h3>{"".join(lines)}' if lines else ""
+    # the same count as the Board tab's badge (`layout.page`)
+    n = len(rows) + len({a["id"] for a in stale + sweep})
+    return f'<section class="due"><h2>due ({n})</h2>{follow}{quiet}</section>'

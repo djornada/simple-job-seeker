@@ -96,7 +96,7 @@ python3 tracker.py sweep        # quiet too long → no_response (asks y/N)
   UI's `/board` and `/stats` include it.
 - Stale rules live in `config.toml`'s `[applications]`. "Quiet" counts
   days since the last status change or follow-up:
-  - `followup_after_days` (10): `stale` and the web UI's `/due` suggest a
+  - `followup_after_days` (10): `stale` and the web UI's Board suggest a
     follow-up…
   - `max_followups` (2): …until you've recorded this many.
   - `no_response_after_days` (60): `sweep` offers to close it as
@@ -105,9 +105,9 @@ python3 tracker.py sweep        # quiet too long → no_response (asks y/N)
 In the web UI: an **I applied** button on each queue card creates the
 application from that job (company, title, URL). `/applications` lists
 them by status, with forms to move one along or record a follow-up, plus
-a form for roles you applied to outside the queue. `/due` shows a "gone
-quiet" section and the two-step no-response sweep, and quiet applications
-count toward the Due tab's badge.
+a form for roles you applied to outside the queue. Board's due section
+lists quiet applications and the two-step no-response sweep, and they
+count toward the Board tab's badge.
 
 Suggested habit: after the daily queue routine, one `tracker.py add` per
 connection sent (with `--followup 5`), and `tracker.py due` every morning.

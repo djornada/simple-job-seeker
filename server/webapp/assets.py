@@ -158,6 +158,15 @@ details.co .tl p.meta { margin: 0 0 2px; }
 details.co .tl .rowline { font-size: 13.5px; }
 .tlactions { margin: 6px 0 0; }
 details.recent { margin: 26px 0; }
+/* Board: what needs you, above the stages */
+section.due { margin: 22px 0; padding: 12px 16px 10px; background: var(--card);
+  border: 1px solid var(--line); border-left: 3px solid var(--amber);
+  border-radius: 8px; }
+section.due h2 { font-family: var(--mono); font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--amber); margin: 0; }
+section.due h3 { font-size: 12.5px; font-weight: 600; color: var(--muted);
+  margin: 12px 0 0; }
+section.due .rowline:last-child { border-bottom: 0; }
 details.recent > summary { cursor: pointer; }
 dialog.logdlg { border: 0; padding: 0; background: none;
   width: min(560px, calc(100vw - 32px)); }
@@ -202,8 +211,7 @@ button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
 """
 
 TABS = [("/", "Queue"), ("/board", "Board"), ("/applications", "Applications"),
-        ("/due", "Due"), ("/stats", "Stats"), ("/gaps", "Gaps"),
-        ("/profile", "Résumé")]
+        ("/stats", "Stats"), ("/gaps", "Gaps"), ("/profile", "Résumé")]
 
 # favicon lives at the project root; loaded once, served as static bytes
 try:

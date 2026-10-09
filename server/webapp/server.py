@@ -102,6 +102,9 @@ class Handler(BaseHTTPRequestHandler):
             company = params.get("company", [""])[0]
             self.redirect("/board?log=" + urllib.parse.quote(company))
             return
+        if path == "/due":  # old links: due items are Board's due section now
+            self.redirect("/board")
+            return
         fn = GET_ROUTES.get(path)
         if fn is None:
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -336,7 +339,7 @@ class Handler(BaseHTTPRequestHandler):
                          (int(raw),))
             conn.commit()
             conn.close()
-        self.redirect("/due")
+        self.redirect("/board")
 
 
     def post_apply(self, form: dict[str, list[str]]) -> None:
@@ -373,7 +376,8 @@ class Handler(BaseHTTPRequestHandler):
     def respond_app(self, conn: sqlite3.Connection, raw_id: str, error: str,
                     form: dict[str, list[str]]) -> None:
         """After an application action: the re-rendered row for htmx, else
-        a redirect to /due or /applications. Closes `conn`."""
+        a redirect to /board (its due section) or /applications. Closes
+        `conn`."""
         if self.headers.get("HX-Request") == "true":
             try:
                 row = apps_db.get(conn, int(raw_id))
@@ -386,7 +390,7 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(render_app(row, error, expired))
             return
         conn.close()
-        back = "/due" if form.get("back", [""])[0] == "/due" else "/applications"
+        back = "/board" if form.get("back", [""])[0] == "/board" else "/applications"
         self.redirect(back + ("?err=" + urllib.parse.quote(error) if error else ""))
 
     def post_app_move(self, form: dict[str, list[str]]) -> None:
@@ -415,12 +419,12 @@ class Handler(BaseHTTPRequestHandler):
         self.respond_app(conn, raw_id, error, form)
 
     def post_app_sweep(self, form: dict[str, list[str]]) -> None:
-        """Second step of /due's sweep: move the confirmed ids."""
+        """Second step of Board's sweep: move the confirmed ids."""
         ids = [int(i) for i in form.get("id", []) if i.isdigit()]
         conn = db()
         apps_db.sweep(conn, load_config(), ids)
         conn.close()
-        self.redirect("/due")
+        self.redirect("/board")
 
 
 def main() -> int:

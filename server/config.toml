@@ -106,7 +106,7 @@ max_checks = 50    # requests per run
 min_age_days = 2   # leave freshly queued postings alone
 recheck_days = 3   # don't re-check a posting more often than this
 
-# Applications (tracker.py apply/move/stale/sweep, /applications, /due).
+# Applications (tracker.py apply/move/stale/sweep, /applications, /board).
 # "Quiet" = days since the application's last activity, open statuses only.
 [applications]
 followup_after_days = 10     # quiet this long → suggest a follow-up

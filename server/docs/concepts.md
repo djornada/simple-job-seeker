@@ -91,7 +91,8 @@ Logging can also schedule a **follow-up** in N days. From that log the tool
 derives three views:
 
 - **Board** — every company grouped by its latest stage.
-- **Due** — follow-ups that are due or overdue, ready to close.
+- **Due** — follow-ups that are due or overdue, ready to close (in the web
+  UI, the top of Board).
 - **History** — the full timeline for one company (in the web UI, expand
   its Board row).
 

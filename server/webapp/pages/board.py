@@ -1,9 +1,11 @@
-"""`/board` — every company you've logged, by latest outreach stage.
+"""`/board` — what's due, then every company you've logged, by latest
+outreach stage.
 
-Each row expands to the company's full timeline. The log dialog
-(`logform.py`) opens from the header and from each row. `?open=<company>`
-expands that row (where `POST /add` lands); `?log=<company>` renders the
-dialog open, for browsers without JS.
+The due section (`due.py`) sits on top whenever something needs you. Each
+company row expands to its full timeline. The log dialog (`logform.py`)
+opens from the header and from each row. `?open=<company>` expands that
+row (where `POST /add` lands); `?log=<company>` renders the dialog open,
+for browsers without JS; `?err=` is a failed "Followed up".
 """
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ import tracker
 
 from ..layout import company_anchor, page, timeline_row
 from ..state import db, esc
+from .due import due_section
 from .logform import log_button, log_dialog
 
 
@@ -61,15 +64,17 @@ def page_board(params: dict[str, list[str]]) -> str:
 </div>"""
     dialog = log_dialog(params["log"][0].strip() if "log" in params else None)
 
-    notice = ""
+    err = params.get("err", [""])[0]
+    notice = f'<p class="banner err">{esc(err)}</p>' if err else ""
     if want and want not in timelines:  # e.g. a company linked from Gaps
-        notice = (f'<div class="banner">Nothing logged for {esc(want)} yet. '
-                  f'{log_button(want, "Log a touchpoint", "linkbtn")}'
-                  f'{_queued(queued.get(want))}</div>')
+        notice += (f'<div class="banner">Nothing logged for {esc(want)} yet. '
+                   f'{log_button(want, "Log a touchpoint", "linkbtn")}'
+                   f'{_queued(queued.get(want))}</div>')
+    due = due_section(params)
     if not timelines:
         empty = ('<div class="empty">No outreach logged yet. Work a target, '
                  f'then {log_button("", "log the first touch", "linkbtn")}.</div>')
-        return page("Board", "/board", dialog + head + notice + empty)
+        return page("Board", "/board", dialog + head + notice + due + empty)
 
     by_stage: dict[str, list[str]] = {}
     for company, events in timelines.items():
@@ -87,5 +92,5 @@ def page_board(params: dict[str, list[str]]) -> str:
     recent_html = ('<details class="recent"><summary>recent activity</summary>'
                    + "".join(timeline_row(r, link_company=True) for r in recent)
                    + "</details>")
-    return page("Board", "/board",
-                dialog + head + notice + "".join(sections) + recent_html)
+    return page("Board", "/board", dialog + head + notice + due
+                + "".join(sections) + recent_html)
