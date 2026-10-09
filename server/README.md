@@ -8,10 +8,15 @@ outputs a markdown queue with prebuilt LinkedIn search links.
 LinkedIn programmatically — no scraping, no automated visits, no auto-connect.
 That keeps your account safe. The automation is in the research, not the action.
 
+Start at the [root README](../README.md) for the overview, Docker setup and
+the Chrome extension. The full docs live in [`docs/`](docs/README.md).
+
 ## Requirements
 
 Python 3.11+ (stdlib only — no pip install needed).
-Optional: [Ollama](https://ollama.com) running locally for `--notes`.
+Optional: an LLM for `--notes`, résumé fit and keyword checks — a local
+[Ollama](https://ollama.com) by default, or any OpenAI-compatible endpoint
+(see `[llm]` in [Configuration](docs/configuration.md#llm)).
 
 To set up Ollama, run `./install.sh` — it checks for Ollama (offering to
 install it), detects your GPU's VRAM, pulls a model sized to fit, and
@@ -133,73 +138,27 @@ the saved posting and `/applications`, and sort last on the queue page.
 
 ## Tuning
 
-Everything lives in `config.toml`:
+Everything lives in `config.toml`; API keys go in `.env`. The
+[root README](../README.md#configuration) has an overview of each section,
+[Configuration](docs/configuration.md) every key and default.
 
-- `per_day` — queue size (30 by default; worked cards collapse to one line)
-- `company_cooldown_days` — avoid pestering the same company
-- `role_keywords` / `stack_keywords` / `exclude_keywords` — scoring
-- `people_roles` — who to look for (recruiters, EMs, heads of eng…)
-- `brazil_friendly_only` — set `false` to see everything
-- `[resume]` — résumé fit, once you've imported your LinkedIn export
-  (`/profile` page or `python3 -m profile import <export.zip>`). The LLM
-  scores each shortlisted job 0–100 on four dimensions: **skills**,
-  **experience**, **culture** and **career**, and lists up to 3 strengths,
-  3 gaps and 5 missing skills. The overall score is their weighted average,
-  computed by the pipeline rather than the model, with weights from
-  `[resume.weights]` (30 / 25 / 15 / 30 by default). Verdict: strong ≥ 75,
-  good ≥ 60, moderate ≥ 45, weak ≥ 30, poor below.
-  - `shortlist` — the minimum number of keyword-ranked jobs that get judged
-    (one LLM call each); a build judges 1.5 × `per_day` when that's more, so
-    the `min_llm_score` cut still leaves a full queue
-  - `min_llm_score` — drop jobs whose overall / 10 is below this (0 disables)
-  - `goals` — optional free text about what you want next; the career
-    dimension judges against it (otherwise against your profile's
-    trajectory)
-  - A reply missing a dimension is scored on the rest, reweighted; one
-    that can't be parsed leaves the job unscored.
+### Résumé fit
 
-  Queue cards show the verdict chip, and **fit breakdown** expands the
-  per-dimension scores, strengths, gaps and missing skills; the markdown
-  queue lists the same. The web UI's **Stats** tab ends with a skill gaps
-  section (`/stats#gaps`) that adds up the missing skills across postings (last 30 or 90 days, or all time): how
-  many postings flagged each one, a weighted score that counts gaps from
-  weaker fits more (sum of 1 − overall/100), when it was last seen and
-  example companies. Skills already in your imported profile are left out.
+Once you've imported your LinkedIn export (`/profile` page or
+`python3 -m profile import <export.zip>`), the LLM scores each shortlisted
+job 0–100 on four dimensions: **skills**, **experience**, **culture** and
+**career**, and lists up to 3 strengths, 3 gaps and 5 missing skills. The
+overall score is their weighted average, computed by the pipeline rather
+than the model, with weights from `[resume.weights]`. How many jobs get
+judged and where the cut is: `[resume]` in
+[Configuration](docs/configuration.md#resume).
 
-  **Check keywords** on a queue card (needs a saved posting) has the LLM
-  list the posting's required and preferred skills, then checks each one
-  against your profile without the LLM: `covered` (whole-word match),
-  `synonym` (matched under another `[keywords.aliases]` spelling) or
-  `missing`, missing required terms first. Terms the posting doesn't
-  actually contain are dropped. On demand only, never during a build;
-  with the LLM down the card shows the failure and a retry button.
-- `[keywords.aliases]` — spellings to merge, `variant = "canonical"`
-  (`k8s = "kubernetes"`, `"next.js" = "nextjs"`), case-insensitive. Used by
-  skill gaps, including when matching against your profile's skills, and by
-  keyword coverage's `synonym` status.
-- `[expiry]` — `--recheck` limits: `max_checks` (50) requests per run,
-  skip postings archived less than `min_age_days` (2) ago, and don't
-  re-check one within `recheck_days` (3).
-- `[gates]` — reject postings you can't be hired for, before any LLM call.
-  Delete the table to turn them off. Each build prints
-  `[gate] rejected N (language X, eligibility Y)` to stderr.
-  - `languages` — languages you work in, with your level (`A1`–`C2` or
-    `"native"`). A posting that requires one you haven't listed ("fluent in
-    German", "German (C1)", "German speaker", "German is required") is
-    rejected; "German or English" passes if either is listed. Asking for a
-    higher level than yours ("native English" vs your `C1`) only adds a
-    flag. A mention softened nearby ("a plus", "nice to have", "preferred")
-    never rejects. Only human languages count, so "Go" or "Rust" never
-    trigger it. Leave it empty to turn the language gate off.
-  - `eligibility_blockers` — phrases in the posting text that reject it
-    ("us citizen", "security clearance"…).
-  - `region_only` — phrases in the location or title that reject it
-    ("us only", "remote (us)"…), even when the location also says remote.
-
-  Phrases are case-insensitive and match at a word start, so `us citizen`
-  also catches "US citizens". Flags show as chips on the web UI's queue
-  cards, as a `Flags:` line in `queues/<date>.md` and in the extension
-  popup, which also shows why a skipped item was rejected.
+Queue cards show the verdict chip, and **fit breakdown** expands the
+per-dimension scores, strengths, gaps and missing skills; the markdown
+queue lists the same. Missing skills add up across postings in the Stats
+tab's [skill gaps](docs/web-ui.md#skill-gaps), and **Check keywords** on a
+card compares one posting against your profile
+([Résumé matching](docs/resume-matching.md#4-keyword-coverage-per-posting)).
 
 ## Extending
 
@@ -212,8 +171,7 @@ Everything lives in `config.toml`:
 
 ## Browser extension
 
-`../extension/` is a Chrome extension that reads whatever's on screen on
-the LinkedIn feed or a Jobs page (on a manual click, nothing automatic)
-and POSTs it to this server's `/api/rate` for scoring against the same
-filters/résumé fit used above. Set `[extension].token` in `config.toml`
-to enable it — see `extension/README.md` for setup.
+`../extension/` scores whatever's on screen on the LinkedIn feed or a Jobs
+page against the same filters and résumé fit, through this server's
+`/api/rate`. Setup: [root README](../README.md#browser-extension) and
+[`extension/README.md`](../extension/README.md).
