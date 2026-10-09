@@ -153,7 +153,9 @@ component (e.g. `extension/`).
   module per route — queue, board, applications, posting, stats, gaps,
   profile; plus due, the section Board renders on top, and logform: the
   log-touchpoint `<dialog>` Board and queue cards share, filled by htmx
-  from `/log-form` or rendered open by `/board?log=` without JS — with
+  from `/log-form` or rendered open by `/board?log=` without JS; ticking a
+  card fills it out of band (`queue.log_prompt`, offer only, saved via
+  htmx back into the card) — with
   GET_ROUTES in its facade; add a page by dropping a module and
   registering it, same recipe as sources/),
   `server.py` (Handler + `main`). Every module

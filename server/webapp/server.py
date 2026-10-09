@@ -28,6 +28,7 @@ from .pages import (
     expired_on,
     get_build_status,
     get_coverage_status,
+    log_prompt,
     note_block,
     render_app,
     render_item,
@@ -253,22 +254,27 @@ class Handler(BaseHTTPRequestHandler):
             "UPDATE queue_items SET done = 1 - done WHERE date = ? AND uid = ?",
             (date, uid))
         conn.commit()
-        self.respond_item(conn, date, uid)
+        self.respond_item(conn, date, uid, offer_log=True)
 
-    def respond_item(self, conn: sqlite3.Connection, date: str, uid: str) -> None:
+    def respond_item(self, conn: sqlite3.Connection, date: str, uid: str,
+                     offer_log: bool = False) -> None:
         """After a queue-card action: the re-rendered card for htmx, else a
-        redirect back to that day's queue. Closes `conn`."""
+        redirect back to that day's queue. With `offer_log`, a card now
+        ticked also opens the log dialog (`log_prompt`). Closes `conn`."""
         if self.headers.get("HX-Request") == "true":
             row = conn.execute(
                 f"{ITEM_SELECT} WHERE date = ? AND uid = ?",
                 (date, uid)).fetchone()
+            prompt = (log_prompt(conn, row, date)
+                      if offer_log and row is not None and row["done"] else "")
             conn.close()
             if row is None:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             with NOTES_LOCK:
                 pending, failed = uid in NOTES_PENDING, uid in NOTES_FAILED
-            self.respond(render_item(row, date, load_config(), pending, failed))
+            self.respond(render_item(row, date, load_config(), pending, failed)
+                         + prompt)
             return
         conn.close()
         self.redirect(f"/?date={urllib.parse.quote(date)}")
@@ -328,6 +334,10 @@ class Handler(BaseHTTPRequestHandler):
             "VALUES (?, ?, ?, ?, ?, ?)",
             (company, person, action, note, today.isoformat(), due))
         conn.commit()
+        uid = form.get("uid", [""])[0]
+        if uid:  # a ticked card's log prompt: stay on the queue
+            self.respond_item(conn, form.get("date", [""])[0], uid)
+            return
         conn.close()
         self.redirect(company_href(company))
 

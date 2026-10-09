@@ -82,6 +82,12 @@ then shows the table in place. See
 
 > visit 2–3 profiles → connect with the note → tick it off.
 
+Ticking a card also offers to log it: the [log dialog](#logging-a-touchpoint)
+opens with the company and `connected` filled in. **Log touchpoint** saves it
+and keeps you on the queue; **Cancel** or Esc keeps the tick and logs
+nothing. It doesn't ask when you untick, or when the company already has a
+touchpoint today. Without JavaScript, ticking just ticks.
+
 ---
 
 ## Board
@@ -109,7 +115,8 @@ same dialog opens from **Log touchpoint** inside an expanded row and from
 `replied`, `meeting`, `applied`, `rejected`, `offer`), an optional
 **follow-up in N days**, and a **note** for future-you.
 
-Saving lands on Board with that company's row expanded. **Cancel** or Esc
+Saving lands on Board with that company's row expanded (except from a
+ticked card's prompt, which keeps you on the queue). **Cancel** or Esc
 closes the dialog without saving. Without JavaScript the buttons open
 `/board?log=<company>` with the form already showing.
 

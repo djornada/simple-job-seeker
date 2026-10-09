@@ -73,7 +73,8 @@ Every queue card has a **tick box**. It means exactly one thing:
 Ticking it dims the card, strikes through the company name, and fills the
 progress bar at the top (`3/10 worked`). It's local batch-hygiene — a way to
 keep your place so you can stop and resume without re-reading the whole list.
-It records nothing about the *outcome* of your outreach.
+It records nothing about the *outcome* of your outreach. (In the web UI,
+ticking offers to log a `connected` touchpoint; it never logs one for you.)
 
 The intended loop per target:
 

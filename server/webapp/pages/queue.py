@@ -3,10 +3,12 @@ coverage, rebuild."""
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import sqlite3
 import urllib.parse
 
+import tracker
 from pipeline import NOTE_LIMIT, build_links
 from sources import Job
 from utils import load_config
@@ -25,7 +27,7 @@ from ..state import (
     db,
     esc,
 )
-from .logform import log_button, log_dialog
+from .logform import log_button, log_dialog, log_form
 
 
 # Queue rows plus whether the posting text is archived, when it was found
@@ -156,6 +158,26 @@ def _fit_block(detail: dict, note: str) -> str:
     return f'<p class="fit">{chip}{esc(note)}</p>{more}'
 
 
+def card_id(uid: str) -> str:
+    """A queue card's element id (uids are `source:url`, not id-safe)."""
+    return "t-" + hashlib.sha1(uid.encode()).hexdigest()[:12]
+
+
+def log_prompt(conn: sqlite3.Connection, r: sqlite3.Row, date: str) -> str:
+    """For a card just ticked worked: the log dialog, filled in with its
+    company and `connected`, as an htmx out-of-band swap. Saving swaps the
+    card back in, so you stay on the queue. Nothing if the company already
+    has a touchpoint today; it only ever offers, never logs."""
+    company = tracker.resolve_company(conn, r["company"])
+    if conn.execute(
+            "SELECT 1 FROM outreach WHERE lower(company) = lower(?) AND date = ?",
+            (company, dt.date.today().isoformat())).fetchone():
+        return ""
+    form = log_form(r["company"], "connected", f"#{card_id(r['uid'])}",
+                    {"date": date, "uid": r["uid"]})
+    return f'<div hx-swap-oob="innerHTML:#logdlg">{form}</div>'
+
+
 def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
                 failed: bool) -> str:
     """One queue target's card — shared by the full page render and the
@@ -210,7 +232,7 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
 
     done = bool(r["done"])
     return f"""
-<article class="target{' done' if done else ''}">
+<article class="target{' done' if done else ''}" id="{card_id(r['uid'])}">
   <form method="post" action="/toggle"
         hx-post="/toggle" hx-target="closest article" hx-swap="outerHTML">
     <input type="hidden" name="date" value="{esc(date)}">

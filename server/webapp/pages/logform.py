@@ -5,6 +5,10 @@ button GETs `/log-form` into the dialog and a small script shows it as a
 modal. Without JS the same button is a plain GET to `/board?log=<company>`,
 which renders the dialog already open. Either way the form posts to
 `POST /add`, which lands on the company's Board row.
+
+Ticking a queue card fills the dialog too (`queue.log_prompt`, an htmx
+out-of-band swap). That form posts with htmx and swaps the card back in,
+so saving stays on the queue.
 """
 from __future__ import annotations
 
@@ -12,23 +16,36 @@ import tracker
 
 from ..state import db, esc
 
-# Show the dialog once htmx has loaded the form into it. A dialog the server
-# rendered open (`/board?log=`) is reopened as a modal, so Esc and the
-# backdrop work the same as after a button click.
+# Show the dialog once htmx has loaded a form into it: a Log button's
+# swap, or a ticked card's out-of-band prompt. Close it once a prompt's
+# form has saved. A dialog the server rendered open (`/board?log=`) is
+# reopened as a modal, so Esc and the backdrop work the same as after a
+# button click.
 _SCRIPT = """<script>
-document.addEventListener("htmx:afterSwap", e => {
-  const d = e.detail.target;
-  if (d.id === "logdlg" && !d.open) d.showModal();
-});
-{ const d = document.getElementById("logdlg");
+{ const show = e => {
+    const d = e.detail.target;
+    if (d.id === "logdlg" && !d.open) d.showModal();
+  };
+  document.addEventListener("htmx:afterSwap", show);
+  document.addEventListener("htmx:oobAfterSwap", show);
+  document.addEventListener("htmx:afterRequest", e => {
+    const d = e.detail.elt.closest("#logdlg");
+    if (d && e.detail.successful) d.close();
+  });
+  const d = document.getElementById("logdlg");
   if (d.open) { d.close(); d.showModal(); } }
 </script>"""
 
 
-def log_form(company: str = "") -> str:
+def log_form(company: str = "", action: str = "visited", target: str = "",
+             hidden: dict[str, str] | None = None) -> str:
     """The form: company (autocompletes from queued and contacted
     companies), person, action, follow-up days, note. Cancel closes the
-    dialog without JS (`formmethod="dialog"`)."""
+    dialog without JS (`formmethod="dialog"`).
+
+    With `target` (a CSS selector) the form posts with htmx and its
+    response replaces that element; `hidden` rides along. Cancel is then a
+    plain button: htmx would post a `formmethod="dialog"` submit too."""
     conn = db()
     companies = [r[0] for r in conn.execute(
         "SELECT DISTINCT company FROM outreach "
@@ -36,12 +53,19 @@ def log_form(company: str = "") -> str:
     conn.close()
     options = "".join(f'<option value="{esc(c)}">' for c in companies)
     action_opts = "".join(
-        f'<option value="{a}"{" selected" if a == "visited" else ""}>{a}</option>'
+        f'<option value="{a}"{" selected" if a == action else ""}>{a}</option>'
         for a in tracker.ACTIONS)
     # focus the first empty field: person when the company is prefilled
     on_company, on_person = ("", " autofocus") if company else (" autofocus", "")
+    hx, cancel = "", '<button class="ghost" formmethod="dialog" formnovalidate>Cancel</button>'
+    if target:
+        hx = f' hx-post="/add" hx-target="{esc(target)}" hx-swap="outerHTML"'
+        cancel = ('<button type="button" class="ghost" '
+                  'onclick="this.closest(\'dialog\').close()">Cancel</button>')
+    extra = "".join(f'<input type="hidden" name="{esc(k)}" value="{esc(v)}">'
+                    for k, v in (hidden or {}).items())
     return f"""
-<form class="logform" method="post" action="/add">
+<form class="logform" method="post" action="/add"{hx}>{extra}
   <h2 class="full">Log a touchpoint</h2>
   <label>Company
     <input name="company" list="companies" required{on_company}
@@ -60,7 +84,7 @@ def log_form(company: str = "") -> str:
   </label>
   <div class="full dlgbtns">
     <button class="primary">Log touchpoint</button>
-    <button class="ghost" formmethod="dialog" formnovalidate>Cancel</button>
+    {cancel}
   </div>
 </form>"""
 

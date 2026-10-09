@@ -16,6 +16,7 @@ from .queue import (
     get_build_status,
     get_coverage_status,
     get_note_status,
+    log_prompt,
     note_block,
     page_queue,
     render_item,
@@ -38,6 +39,6 @@ GET_ROUTES = {
 
 __all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
            "get_coverage_status", "get_log_form", "log_button", "log_dialog",
-           "note_block", "page_applications", "page_board", "page_gaps",
+           "log_prompt", "note_block", "page_applications", "page_board", "page_gaps",
            "page_posting", "page_profile", "page_queue", "page_stats",
            "render_app", "render_item"]
