@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import re
 import sqlite3
 import urllib.parse
 
@@ -39,6 +40,10 @@ ITEM_SELECT = ("SELECT q.*, EXISTS(SELECT 1 FROM postings p WHERE p.uid = q.uid)
                "applications a WHERE a.uid = q.uid LIMIT 1) AS app_id, "
                "EXISTS(SELECT 1 FROM profile) AS profiled "
                "FROM queue_items q")
+# The queue page's card order; cards streamed in during a build follow it.
+CARD_ORDER = ("expired_at IS NOT NULL, llm_score IS NULL, llm_score DESC, "
+              "score DESC, company")
+CARD_ID_RE = re.compile(r"t-[0-9a-f]{12}")
 
 
 def note_block(date: str, uid: str, note: str | None, pending: bool,
@@ -294,8 +299,12 @@ def _build_section(date: str, rows: list[sqlite3.Row], prow: sqlite3.Row | None,
     elif error:
         banner = f'<p class="banner err">Last build failed: {esc(error)}</p>'
 
+    # each poll says which cards the page has, so the reply can add the new
+    # ones and drop the gone ones (`_card_changes`)
     poll = (f' hx-get="/build-status?date={urllib.parse.quote(date)}" '
-            'hx-trigger="every 3s" hx-swap="outerHTML"') if building else ""
+            'hx-trigger="every 3s" hx-swap="outerHTML" hx-vals=\'js:{have: '
+            '[...document.querySelectorAll("#items > article")]'
+            '.map(a => a.id).join(" ")}\'') if building else ""
     return f'<div id="build-status"{poll}>{manifest}{banner}</div>'
 
 
@@ -333,23 +342,50 @@ def get_coverage_status(params: dict[str, list[str]]) -> str:
                           pending, error, show=True)
 
 
+def _card_changes(rows: list[sqlite3.Row], date: str, have: set[str]) -> str:
+    """Out-of-band swaps that bring the page's cards (`have`, by id) up to
+    `rows`: each new card goes in before the next card the page already
+    shows, gone ones are deleted. Cards already there aren't touched, so
+    their open details and in-flight polls survive."""
+    ids = [card_id(r["uid"]) for r in rows]
+    kept = have & set(ids)
+    cfg = load_config()
+    with NOTES_LOCK:
+        pending, failed = set(NOTES_PENDING), set(NOTES_FAILED)
+    out = []
+    for i, r in enumerate(rows):
+        if ids[i] in have:
+            continue
+        nxt = next((c for c in ids[i + 1:] if c in kept), None)
+        where = f"beforebegin:#{nxt}" if nxt else "beforeend:#items"
+        card = render_item(r, date, cfg, r["uid"] in pending, r["uid"] in failed)
+        out.append(f'<div hx-swap-oob="{where}">{card}</div>')
+    out += [f'<div id="{c}" hx-swap-oob="delete"></div>'
+            for c in sorted(have - set(ids))]
+    return "".join(out)
+
+
 def get_build_status(params: dict[str, list[str]]) -> str:
-    """`/build-status` — polled by `_build_section` while a build runs;
-    also what `POST /build` returns directly to an htmx caller."""
+    """`/build-status` — polled by `_build_section` while a build runs, with
+    `have` (the page's card ids) so the reply also streams cards in; the
+    last poll, once the build is done, leaves the page matching a reload.
+    Also what `POST /build` returns directly to an htmx caller."""
     date = params.get("date", [""])[0]
     if not DATE_RE.fullmatch(date):
         date = dt.date.today().isoformat()
     conn = db()
-    rows = conn.execute(
-        "SELECT * FROM queue_items WHERE date = ? "
-        "ORDER BY llm_score IS NULL, llm_score DESC, score DESC, company",
-        (date,)).fetchall()
+    rows = conn.execute(f"{ITEM_SELECT} WHERE date = ? ORDER BY {CARD_ORDER}",
+                        (date,)).fetchall()
     prow = conn.execute("SELECT headline FROM profile WHERE id = 1").fetchone()
     conn.close()
     with BUILD_LOCK:
         building, error = BUILD["running"], BUILD["error"]
         stage = BUILD["progress"]
-    return _build_section(date, rows, prow, building, error, stage)
+    section = _build_section(date, rows, prow, building, error, stage)
+    if "have" not in params:
+        return section
+    have = set(CARD_ID_RE.findall(params["have"][0]))
+    return section + _card_changes(rows, date, have)
 
 
 def page_queue(params: dict[str, list[str]]) -> str:
@@ -360,10 +396,8 @@ def page_queue(params: dict[str, list[str]]) -> str:
     date = params.get("date", [""])[0]
     if not DATE_RE.fullmatch(date):
         date = dates[0] if dates else today
-    rows = conn.execute(
-        f"{ITEM_SELECT} WHERE date = ? ORDER BY expired_at IS NOT NULL, "
-        "llm_score IS NULL, llm_score DESC, score DESC, company",
-        (date,)).fetchall()
+    rows = conn.execute(f"{ITEM_SELECT} WHERE date = ? ORDER BY {CARD_ORDER}",
+                        (date,)).fetchall()
     prow = conn.execute(
         "SELECT headline FROM profile WHERE id = 1").fetchone()
     conn.close()
@@ -384,15 +418,14 @@ def page_queue(params: dict[str, list[str]]) -> str:
                  for d in dates]
         datenav = f'<nav class="dates">{"".join(links)}</nav>'
 
-    items = [render_item(r, date, cfg, r["uid"] in pending, r["uid"] in failed)
-             for r in rows]
-
-    if not rows and not building:
-        items.append('<p class="empty">No queue for this date. '
-                     'Build one — the boards decide, you click.</p>')
-    if rows:
-        items.append('<p class="hint">Checklist per target: visit 2–3 profiles '
-                     '→ connect with note → tick it off.</p>')
+    cards = "".join(render_item(r, date, cfg, r["uid"] in pending,
+                                r["uid"] in failed) for r in rows)
+    if not rows:  # hidden by CSS once a build streams a card in
+        cards = ('<p class="empty">No queue for this date. '
+                 'Build one — the boards decide, you click.</p>')
+    hint = ('<p class="hint">Checklist per target: visit 2–3 profiles '
+            '→ connect with note → tick it off.</p>') if rows else ""
 
     return page(f"Queue {date}", "/",
-                log_dialog() + build_section + datenav + "".join(items))
+                log_dialog() + build_section + datenav
+                + f'<div id="items">{cards}</div>' + hint)

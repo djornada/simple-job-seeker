@@ -37,8 +37,14 @@ Your daily worklist and the page you'll live in.
   job boards, then `scoring fit 12/45` while the résumé re-rank runs (one LLM
   call per job, so a queue of 30 takes a few minutes). If today's queue
   already exists, the button reads **Fetch more targets** and tops it up.
+- **Cards appear as jobs are scored**, in fit order, so you can start on the
+  first ones while the rest come in. A card can drop out again when better
+  jobs push it out of the day's top 30, unless you've already ticked it,
+  drafted its note, checked its keywords or applied. Building from another
+  day's page switches to today's.
 - Tick **draft notes** before building to also generate connection notes
-  (one more LLM call per target; you can draft per card instead).
+  (one more LLM call per target; you can draft per card instead). The cards
+  show "drafting note…" and fill in one by one once scoring is done.
 - A **progress bar** shows how many targets you've worked (`3/30 worked`).
   Ticking a card collapses it to one line (company and title); untick it to
   see the rest again.

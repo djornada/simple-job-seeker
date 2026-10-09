@@ -230,11 +230,18 @@ class Handler(BaseHTTPRequestHandler):
                 BUILD["progress"] = ""
                 threading.Thread(target=build_worker,
                                  args=("notes" in form,), daemon=True).start()
+        today = dt.date.today().isoformat()
         if self.headers.get("HX-Request") == "true":
             date = form.get("date", [""])[0]
+            if date != today:  # the cards land on today's queue: watch them there
+                self.send_response(HTTPStatus.OK)
+                self.send_header("HX-Redirect", f"/?date={today}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
             self.respond(get_build_status({"date": [date]}))
             return
-        self.redirect("/")
+        self.redirect(f"/?date={today}")
 
     def post_import(self, raw: bytes, content_type: str) -> None:
         data = parse_multipart(content_type, raw).get("resume")

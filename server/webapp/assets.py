@@ -202,6 +202,7 @@ button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
   color: var(--accent-ink); text-decoration: underline;
   text-underline-offset: 2px; cursor: pointer; }
 .empty { margin: 40px 0; color: var(--muted); }
+#items > p.empty:not(:only-child) { display: none; }  /* a build streamed a card in */
 .posting { margin: 18px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
 .hint { margin-top: 24px; color: var(--muted); font-size: 13px; }
 @media (max-width: 620px) {

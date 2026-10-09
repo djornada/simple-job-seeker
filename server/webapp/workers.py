@@ -2,13 +2,16 @@
 note, check a posting's keyword coverage.
 
 The build persists to queue_items only — the web UI reads from the DB; the
-markdown file in queues/ is a CLI artifact.
+markdown file in queues/ is a CLI artifact. It writes cards as fit scoring
+goes (`_Stream`), so the queue page can show them before the build ends.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
+import sqlite3
 
-from db import db_connect, save_queue
+from db import db_connect, mark_queued, save_item
 from pipeline import build_queue, check_coverage, draft_note, load_profile_text
 from sources import Job
 from utils import load_config
@@ -31,26 +34,121 @@ def _build_progress(text: str) -> None:
         BUILD["progress"] = text
 
 
+class _Stream:
+    """Today's cards while a build runs. After each fit judgment, `judged`
+    syncs queue_items to the best `limit` jobs so far above
+    `[resume].min_llm_score` — the order `rerank_with_resume` ends with —
+    so a card shows as soon as its job makes the cut and goes if a better
+    one pushes it out. A card someone has touched stays. `finish` syncs to
+    the final queue and only then calls `mark_queued`, so a card that came
+    and went leaves no company cooldown behind."""
+
+    def __init__(self, conn: sqlite3.Connection, cfg: dict, limit: int,
+                 with_notes: bool) -> None:
+        self.conn, self.limit, self.with_notes = conn, limit, with_notes
+        self.floor = cfg.get("resume", {}).get("min_llm_score", 5)
+        self.date = dt.date.today().isoformat()
+        self.passed: list[Job] = []    # judged jobs above the floor, best first
+        self.shown: dict[str, Job] = {}  # uid → job, for this build's cards
+        self.to_draft: set[str] = set()  # cards showing "drafting note…"
+
+    def judged(self, job: Job) -> None:
+        if (job.llm_score or 0) >= self.floor:
+            self.passed.append(job)
+            self.passed.sort(key=lambda j: (j.llm_score or 0, j.score),
+                             reverse=True)
+        self.sync(self.passed[:self.limit])
+
+    def sync(self, want: list[Job]) -> None:
+        for j in want:
+            if j.uid not in self.shown:
+                if self.with_notes:  # pending before the card can render
+                    with NOTES_LOCK:
+                        NOTES_PENDING.add(j.uid)
+                    self.to_draft.add(j.uid)
+                save_item(self.conn, j)
+                self.shown[j.uid] = j
+        keep = {j.uid for j in want}
+        for uid in [u for u in self.shown if u not in keep]:
+            if not self._touched(uid):
+                self.conn.execute(
+                    "DELETE FROM queue_items WHERE date = ? AND uid = ?",
+                    (self.date, uid))
+                self._forget(uid)
+        self.conn.commit()
+
+    def _touched(self, uid: str) -> bool:
+        """Ticked, noted, keyword-checked or applied to, or a check or a
+        draft you asked for still running."""
+        row = self.conn.execute(
+            "SELECT done OR note IS NOT NULL OR coverage_json IS NOT NULL "
+            "OR EXISTS(SELECT 1 FROM applications a WHERE a.uid = q.uid) "
+            "FROM queue_items q WHERE date = ? AND uid = ?",
+            (self.date, uid)).fetchone()
+        with COVERAGE_LOCK:
+            checking = uid in COVERAGE_PENDING
+        with NOTES_LOCK:
+            drafting = uid in NOTES_PENDING and not self.with_notes
+        return bool(row and row[0]) or checking or drafting
+
+    def _forget(self, uid: str) -> None:
+        del self.shown[uid]
+        if uid in self.to_draft:
+            self.to_draft.discard(uid)
+            with NOTES_LOCK:
+                NOTES_PENDING.discard(uid)
+
+    def finish(self, queue: list[Job]) -> None:
+        """Sync to the final queue, then mark every card left as queued."""
+        self.sync(queue)
+        self.settle()
+
+    def settle(self) -> None:
+        """Mark this build's cards queued (also after a failure: they're on
+        the page, so they count)."""
+        for j in self.shown.values():
+            mark_queued(self.conn, j)
+        self.conn.commit()
+
+    def cards(self) -> list[str]:
+        """This build's cards, best first."""
+        return [j.uid for j in sorted(
+            self.shown.values(), key=lambda j: (j.llm_score or 0, j.score),
+            reverse=True)]
+
+
 def build_worker(with_notes: bool) -> None:
+    stream = None
     try:
         cfg = load_config()
         conn = db_connect()
         limit = cfg["targets"].get("per_day", 30)
+        stream = _Stream(conn, cfg, limit, with_notes)
         queue = build_queue(conn, cfg, limit, on_progress=lambda done, total:
-                            _build_progress(f"scoring fit {done}/{total}"))
-        notes: dict[str, str] = {}
-        if with_notes:
-            for i, j in enumerate(queue, 1):
-                _build_progress(f"drafting notes {i}/{len(queue)}")
-                note = draft_note(j, cfg)
-                if note:
-                    notes[j.uid] = note
-        if queue:
-            save_queue(conn, queue, notes)
+                            _build_progress(f"scoring fit {done}/{total}"),
+                            on_judged=stream.judged)
+        stream.finish(queue)
+        # the cards are up, each showing "drafting note…" if notes were asked
+        uids = [u for u in stream.cards() if u in stream.to_draft]
+        for i, uid in enumerate(uids, 1):
+            _build_progress(f"drafting notes {i}/{len(uids)}")
+            stream.to_draft.discard(uid)
+            try:
+                note_worker(stream.date, uid)
+            except Exception:  # noqa: BLE001,S110 — marked failed on the card
+                pass
         conn.close()
         error = ""
     except Exception as e:  # noqa: BLE001 — surface any failure in the UI
         error = str(e) or e.__class__.__name__
+        if stream is not None:
+            try:
+                stream.settle()
+            except sqlite3.Error:
+                pass
+    if stream is not None and stream.to_draft:  # a failure left some pending
+        with NOTES_LOCK:
+            NOTES_PENDING.difference_update(stream.to_draft)
     with BUILD_LOCK:
         BUILD["running"] = False
         BUILD["error"] = error

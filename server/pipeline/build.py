@@ -18,7 +18,11 @@ from .select import select_queue
 
 def build_queue(conn: sqlite3.Connection, cfg: dict, limit: int,
                 on_progress: Callable[[int, int], None] | None = None,
+                on_judged: Callable[[Job], None] | None = None,
                 ) -> list[Job]:
+    """The day's queue, best first. `on_progress` and `on_judged` are passed
+    to the re-rank (`rerank_with_resume`); neither fires without a
+    résumé."""
     cooldown = cfg["targets"].get("company_cooldown_days", 30)
     profile_text = load_profile_text(conn)
     # The re-rank drops jobs under [resume].min_llm_score, so judge half
@@ -29,5 +33,6 @@ def build_queue(conn: sqlite3.Connection, cfg: dict, limit: int,
     if profile_text:
         candidates = rerank_with_resume(candidates, profile_text, cfg,
                                         shortlist=pool,
-                                        on_progress=on_progress)
+                                        on_progress=on_progress,
+                                        on_judged=on_judged)
     return candidates[:limit]

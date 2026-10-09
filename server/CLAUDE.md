@@ -149,7 +149,12 @@ component (e.g. `extension/`).
   favicon/vendored htmx bytes), `multipart.py` (the in-house upload parser — stdlib
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
   (background build/note/coverage threads — `build_worker` calls
-  `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
+  `pipeline.build_queue`, the same use case the CLI uses, with an
+  `on_judged` hook: `_Stream` keeps today's queue_items synced to the best
+  `per_day` jobs judged so far, keeps touched cards, and calls
+  `mark_queued` only at the end; `/build-status` polls send the page's
+  card ids and the reply inserts/deletes cards out of band, then notes
+  are drafted card by card through `note_worker`), `pages/` (one
   module per route — queue, board, applications, posting, stats,
   profile; plus due and gaps, the sections Board and Stats render, and
   logform: the

@@ -210,12 +210,13 @@ def judge_fit(job: Job, profile_text: str, cfg: dict) -> dict | None:
 def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict,
                        shortlist: int | None = None,
                        on_progress: Callable[[int, int], None] | None = None,
+                       on_judged: Callable[[Job], None] | None = None,
                        ) -> list[Job]:
     """Re-rank keyword-gated jobs by LLM-judged fit with the resume.
 
     The top `shortlist` jobs by keyword score (default `[resume].shortlist`)
-    are judged, one LLM call each; `on_progress(done, total)` fires after
-    each. LLM score is primary, keyword score the tiebreak. Jobs below
+    are judged, one LLM call each; `on_judged(job)` then
+    `on_progress(done, total)` fire after each. LLM score is primary, keyword score the tiebreak. Jobs below
     `[resume].min_llm_score` are dropped. If the LLM backend is unreachable
     the stage is a no-op and the keyword order is returned untouched.
     """
@@ -236,6 +237,8 @@ def rerank_with_resume(jobs: list[Job], profile_text: str, cfg: dict,
         job.fit_note = result.get("fit", "")
         job.fit_detail = result.get("detail", {})
         scored.append(job)
+        if on_judged:
+            on_judged(job)
         if on_progress:
             on_progress(i, len(head))
 
