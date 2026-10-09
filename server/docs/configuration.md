@@ -126,7 +126,7 @@ reactjs = "react"
 
 Used in two places:
 
-- **Gaps** (`/gaps`) merges the variants into one row, including when
+- **Skill gaps** (on [Stats](web-ui.md#skill-gaps)) merges the variants into one row, including when
   dropping skills your profile already has.
 - **Keyword coverage** ([Résumé matching](resume-matching.md#4-keyword-coverage-per-posting))
   marks a posting term as `synonym` when your profile has it under another

@@ -22,8 +22,8 @@ Pages:
                    row expands to its timeline; log touchpoints in a dialog
                    (also on queue cards)
     /applications  roles applied to, by status
-    /stats         source + fit-score effectiveness
-    /gaps          skills the fit keeps flagging as missing
+    /stats         source + fit-score effectiveness, then skill gaps (the
+                   skills the fit keeps flagging as missing)
     /profile       import/replace the résumé export
 """
 from .server import main

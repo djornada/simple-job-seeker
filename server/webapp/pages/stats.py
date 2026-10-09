@@ -1,4 +1,5 @@
-"""`/stats` — source + fit-score effectiveness against the outreach funnel."""
+"""`/stats` — source + fit-score effectiveness against the outreach funnel,
+then skill gaps (`gaps.py`; `?days=` picks its window)."""
 from __future__ import annotations
 
 import sqlite3
@@ -7,6 +8,7 @@ import tracker
 
 from ..layout import page
 from ..state import db, esc
+from .gaps import gaps_section
 
 
 def _best_stage_by_company(conn: sqlite3.Connection) -> dict[str, int]:
@@ -34,7 +36,7 @@ def _stats_table(header: str, rows: list[tuple]) -> str:
             f'<tbody>{"".join(trs)}</tbody></table>')
 
 
-def page_stats(_: dict[str, list[str]]) -> str:
+def page_stats(params: dict[str, list[str]]) -> str:
     conn = db()
     qrows = conn.execute(
         "SELECT source, LOWER(company) AS company, llm_score "
@@ -87,4 +89,4 @@ def page_stats(_: dict[str, list[str]]) -> str:
              'outreach log by lower-cased name — loose, but fine for personal '
              'tooling. “Contacted” = reached at least the connected stage; '
              '“replied” = the company answered.</p>')
-    return page("Stats", "/stats", body)
+    return page("Stats", "/stats", body + gaps_section(params))

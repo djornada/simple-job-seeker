@@ -81,7 +81,7 @@ component (e.g. `extension/`).
   `queue_items.fit_json` and renders as a verdict chip + `<details>` on
   queue cards (`pages/queue.py`'s `_fit_block`) and as markdown lines;
   `keywords.py` (`clean`, then `alias_map`/`normalize`: lower-case, trim,
-  collapse whitespace, then `[keywords.aliases]`; shared by `/gaps` and
+  collapse whitespace, then `[keywords.aliases]`; shared by skill gaps and
   keyword coverage); `coverage.py` (`check_coverage`, on demand only:
   `extract_keywords` is one JSON-mode, temperature-0 LLM call over the
   archived posting (first 8,000 chars) for required/preferred terms,
@@ -150,8 +150,9 @@ component (e.g. `extension/`).
   dropped `cgi` in 3.13), `layout.py` (page chrome), `workers.py`
   (background build/note/coverage threads — `build_worker` calls
   `pipeline.build_queue`, the same use case the CLI uses), `pages/` (one
-  module per route — queue, board, applications, posting, stats, gaps,
-  profile; plus due, the section Board renders on top, and logform: the
+  module per route — queue, board, applications, posting, stats,
+  profile; plus due and gaps, the sections Board and Stats render, and
+  logform: the
   log-touchpoint `<dialog>` Board and queue cards share, filled by htmx
   from `/log-form` or rendered open by `/board?log=` without JS; ticking a
   card fills it out of band (`queue.log_prompt`, offer only, saved via
@@ -166,7 +167,8 @@ component (e.g. `extension/`).
   note drafting, plus an outreach board with what's due on top (rows
   expand to each company's timeline; `POST /add` lands on
   `/board?open=<company>`, and the old `/company`/`/log`/`/due` URLs
-  redirect there), a `/stats` source-effectiveness page, and a `/profile` page to upload the LinkedIn
+  redirect there), a `/stats` source-effectiveness page with skill gaps
+  below it, and a `/profile` page to upload the LinkedIn
   export ZIP (parsed then `profile.ingest`; file is read locally, nothing is
   sent to LinkedIn). Builds run in a background thread; queue items persist
   in the queue_items table. Generates links only; the click is still human.
@@ -194,7 +196,9 @@ component (e.g. `extension/`).
   postings (`postings.expired_at`, via `ITEM_SELECT` and
   `pages/applications.py`'s `expired_on`) get an "expired" chip on queue
   cards, `/posting` and `/applications`, and sort last on the queue.
-  `/gaps` aggregates `fit_json.missing_skills` over `?days=30|90|all`
+  Stats ends with skill gaps (`pages/gaps.py`'s `gaps_section`, at
+  `/stats#gaps`; old `/gaps` links redirect there), which aggregates
+  `fit_json.missing_skills` over `?days=30|90|all`
   (latest row per uid, so a re-queued job counts once): postings, weighted
   score (sum of 1 − overall/100), last seen, three example companies;
   skills in the profile's `skills_json` are dropped after the same

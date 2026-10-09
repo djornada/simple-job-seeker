@@ -1,4 +1,5 @@
-"""`/gaps` — skills the résumé fit keeps flagging as missing, across postings.
+"""Stats' skill gaps section — skills the résumé fit keeps flagging as
+missing, across postings. `?days=30|90|all` picks the window.
 
 Aggregates `fit_json.missing_skills` (pipeline/fit.py) over a window of
 queue days. Weighted score = sum of (1 − overall/100) per posting, so gaps
@@ -15,13 +16,14 @@ from pipeline import load_profile_bits
 from pipeline.keywords import alias_map, normalize
 from utils import load_config
 
-from ..layout import company_href, page
+from ..layout import company_href
 from ..state import db, esc
 
 WINDOWS = ("30", "90", "all")
 
 
-def page_gaps(params: dict[str, list[str]]) -> str:
+def gaps_section(params: dict[str, list[str]]) -> str:
+    """The section, anchored at `#gaps`, below Stats' source tables."""
     window = params.get("days", ["90"])[0]
     if window not in WINDOWS:
         window = "90"
@@ -55,20 +57,21 @@ def page_gaps(params: dict[str, list[str]]) -> str:
             g["companies"].append((r["date"], r["company"]))
 
     nav = "".join(
-        f'<a{" class=cur" if w == window else ""} href="/gaps?days={w}">'
+        f'<a{" class=cur" if w == window else ""} href="/stats?days={w}#gaps">'
         f'{"all time" if w == "all" else f"last {w} days"}</a>'
         for w in WINDOWS)
     head = (f'<section class="stage"><h2>skill gaps</h2></section>'
             f'<nav class="dates">{nav}</nav>')
     if not latest:
-        return page("Gaps", "/gaps", head + (
+        return f'<div id="gaps">{head}' + (
             '<p class="empty">No fit breakdowns in this window yet. Gaps come '
             'from résumé fit scoring: <a href="/profile">import your '
-            'résumé</a>, then build a queue.</p>'))
+            'résumé</a>, then build a queue.</p></div>')
     if not gaps:
-        return page("Gaps", "/gaps", head + (
+        return f'<div id="gaps">{head}' + (
             f'<p class="empty">No missing skills across {len(latest)} scored '
-            'postings in this window (or all of them are in your profile).</p>'))
+            'postings in this window (or all of them are in your profile).</p>'
+            '</div>')
 
     trs = []
     for skill, g in sorted(gaps.items(),
@@ -84,12 +87,13 @@ def page_gaps(params: dict[str, list[str]]) -> str:
         trs.append(f"<tr><td>{esc(skill)}</td><td>{g['postings']}</td>"
                    f"<td class='rate'>{g['weight']:.2f}</td>"
                    f"<td>{g['last']}</td><td>{links}</td></tr>")
-    table = ('<table class="stats"><thead><tr><th>skill</th><th>postings</th>'
-             '<th>weighted</th><th>last seen</th><th>examples</th></tr></thead>'
-             f'<tbody>{"".join(trs)}</tbody></table>')
+    table = ('<div class="scrollx"><table class="stats"><thead><tr>'
+             '<th>skill</th><th>postings</th><th>weighted</th>'
+             '<th>last seen</th><th>examples</th></tr></thead>'
+             f'<tbody>{"".join(trs)}</tbody></table></div>')
     caveat = (f'<p class="caveat">Across {len(latest)} scored postings. '
               'Weighted = sum of (1 − overall fit / 100), so a gap in a weak '
               'fit counts more than one in a strong fit. Skills in your '
               'imported profile are left out; merge spellings with '
               '<code>[keywords].aliases</code> in config.toml.</p>')
-    return page("Gaps", "/gaps", head + table + caveat)
+    return f'<div id="gaps">{head}{table}{caveat}</div>'

@@ -86,7 +86,7 @@ culture = 15
 career = 30
 
 # Skill-name aliases, variant = canonical, used to merge spellings on the
-# /gaps page (and by keyword coverage). Matching is case-insensitive.
+# skill gaps on /stats (and by keyword coverage). Matching is case-insensitive.
 [keywords.aliases]
 k8s = "kubernetes"
 js = "javascript"

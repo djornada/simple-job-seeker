@@ -22,7 +22,7 @@ generates links. The click is still human.
 
 ## Navigation
 
-Tabs across the top: **Queue · Board · Applications · Stats · Gaps · Résumé**.
+Tabs across the top: **Queue · Board · Applications · Stats · Résumé**.
 The **Board** tab shows a badge with the number of things that need
 attention: follow-ups due and applications gone quiet.
 
@@ -98,7 +98,8 @@ stage** (offer at the top, visited at the bottom). Each row shows the date
 of the last touch, the company, and its status; click it to expand the
 company's full timeline: how many times it's been queued, then every
 touchpoint in order. A company name anywhere else in the app (the due
-section, Applications, Gaps, recent activity) opens its row here.
+section, Applications, skill gaps on Stats, recent activity) opens its row
+here.
 
 **Recent activity**, collapsed at the bottom, lists the last 25 touchpoints
 across all companies.
@@ -142,7 +143,8 @@ Every button lands back on Board. Old `/due` links redirect there.
 
 ## Stats
 
-Source-effectiveness reporting, so you can see which boards actually convert.
+How the search is going: which boards actually convert, and which skills keep
+coming up missing.
 
 - **By source** — for each job board: how many companies you queued, how many
   you contacted, how many replied, and the reply rate.
@@ -152,6 +154,17 @@ Source-effectiveness reporting, so you can see which boards actually convert.
 
 Companies are matched between the queue and the outreach log by name (loose,
 case-insensitive) — fine for personal use; the page states the caveat.
+
+### Skill gaps
+
+Below the tables, the skills your résumé fit keeps flagging as missing,
+added up across postings over the **last 30 or 90 days, or all time** (the
+switch reloads Stats at this section; 90 days by default). Each row shows
+how many postings flagged the skill, a weighted score that counts gaps from
+weaker fits more (sum of 1 − overall fit/100), when it was last seen, and up
+to three example companies, each opening its Board row. Skills already in
+your imported profile are left out; merge spellings with
+[`[keywords.aliases]`](configuration.md). Old `/gaps` links redirect here.
 
 ---
 

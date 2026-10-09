@@ -106,6 +106,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/due":  # old links: due items are Board's due section now
             self.redirect("/board")
             return
+        if path == "/gaps":  # old links: skill gaps is a section of Stats now
+            days = params.get("days", [""])[0]
+            self.redirect("/stats" + (f"?days={urllib.parse.quote(days)}"
+                                      if days else "") + "#gaps")
+            return
         fn = GET_ROUTES.get(path)
         if fn is None:
             self.send_error(HTTPStatus.NOT_FOUND)

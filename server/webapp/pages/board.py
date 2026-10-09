@@ -66,7 +66,7 @@ def page_board(params: dict[str, list[str]]) -> str:
 
     err = params.get("err", [""])[0]
     notice = f'<p class="banner err">{esc(err)}</p>' if err else ""
-    if want and want not in timelines:  # e.g. a company linked from Gaps
+    if want and want not in timelines:  # e.g. a company linked from skill gaps
         notice += (f'<div class="banner">Nothing logged for {esc(want)} yet. '
                    f'{log_button(want, "Log a touchpoint", "linkbtn")}'
                    f'{_queued(queued.get(want))}</div>')
