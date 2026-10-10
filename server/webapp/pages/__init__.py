@@ -18,6 +18,7 @@ from .queue import (
     log_prompt,
     note_block,
     page_queue,
+    progress_oob,
     render_item,
 )
 from .stats import page_stats
@@ -39,4 +40,4 @@ __all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
            "get_coverage_status", "get_log_form", "log_button", "log_dialog",
            "log_prompt", "note_block", "page_applications", "page_board",
            "page_posting", "page_profile", "page_queue", "page_stats",
-           "render_app", "render_item"]
+           "progress_oob", "render_app", "render_item"]

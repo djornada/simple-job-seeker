@@ -30,6 +30,7 @@ from .pages import (
     get_coverage_status,
     log_prompt,
     note_block,
+    progress_oob,
     render_app,
     render_item,
 )
@@ -266,19 +267,22 @@ class Handler(BaseHTTPRequestHandler):
             "UPDATE queue_items SET done = 1 - done WHERE date = ? AND uid = ?",
             (date, uid))
         conn.commit()
-        self.respond_item(conn, date, uid, offer_log=True)
+        self.respond_item(conn, date, uid, offer_log=True, progress=True)
 
     def respond_item(self, conn: sqlite3.Connection, date: str, uid: str,
-                     offer_log: bool = False) -> None:
+                     offer_log: bool = False, progress: bool = False) -> None:
         """After a queue-card action: the re-rendered card for htmx, else a
         redirect back to that day's queue. With `offer_log`, a card now
-        ticked also opens the log dialog (`log_prompt`). Closes `conn`."""
+        ticked also opens the log dialog (`log_prompt`); with `progress`,
+        the header's worked tracker updates too. Closes `conn`."""
         if self.headers.get("HX-Request") == "true":
             row = conn.execute(
                 f"{ITEM_SELECT} WHERE date = ? AND uid = ?",
                 (date, uid)).fetchone()
             prompt = (log_prompt(conn, row, date)
                       if offer_log and row is not None and row["done"] else "")
+            if progress:
+                prompt += progress_oob(conn, date)
             conn.close()
             if row is None:
                 self.send_error(HTTPStatus.NOT_FOUND)

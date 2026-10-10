@@ -257,6 +257,28 @@ def render_item(r: sqlite3.Row, date: str, cfg: dict, pending: bool,
 </article>"""
 
 
+def progress_bar(rows: list[sqlite3.Row], oob: bool = False) -> str:
+    """The "N/M worked" tracker in the queue's header, one segment per card.
+    With `oob`, an htmx out-of-band swap, so a tick updates it alongside the
+    card it re-renders."""
+    if not rows:
+        return ""
+    done_n = sum(r["done"] for r in rows)
+    segs = "".join(
+        f'<span class="seg{" on" if r["done"] else ""}"></span>' for r in rows)
+    swap = ' hx-swap-oob="true"' if oob else ""
+    return (f'<div class="progress" id="progress"{swap}>'
+            f'<span class="segs">{segs}</span>'
+            f'<span class="count">{done_n}/{len(rows)} worked</span></div>')
+
+
+def progress_oob(conn: sqlite3.Connection, date: str) -> str:
+    """`progress_bar` for `date`'s queue, as an out-of-band swap."""
+    rows = conn.execute(f"{ITEM_SELECT} WHERE date = ? ORDER BY {CARD_ORDER}",
+                        (date,)).fetchall()
+    return progress_bar(rows, oob=True)
+
+
 def _build_section(date: str, rows: list[sqlite3.Row], prow: sqlite3.Row | None,
                    building: bool, error: str, stage: str = "") -> str:
     """Manifest header + progress + build form + status banner, wrapped in
@@ -264,13 +286,8 @@ def _build_section(date: str, rows: list[sqlite3.Row], prow: sqlite3.Row | None,
     htmx response, and `GET /build-status`. `stage` is the worker's
     `BUILD["progress"]` ("scoring fit 12/45"), shown while building."""
     today = dt.date.today().isoformat()
-    done_n = sum(r["done"] for r in rows)
     weekday = dt.date.fromisoformat(date).strftime("%A")
-    segs = "".join(
-        f'<span class="seg{" on" if r["done"] else ""}"></span>' for r in rows)
-    progress = (f'<div class="progress"><span class="segs">{segs}</span>'
-                f'<span class="count">{done_n}/{len(rows)} worked</span></div>'
-                if rows else "")
+    progress = progress_bar(rows)
     build_label = ("Fetch more targets" if rows and date == today
                    else "Build today’s queue")
     disabled = " disabled" if building else ""
