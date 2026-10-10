@@ -162,12 +162,20 @@ card compares one posting against your profile
 
 ## Extending
 
-- New source: write a `fetch_x() -> list[Job]`, register in `FETCHERS`,
-  add to `sources.enabled`.
-- Different note model: point `[ollama]` at any OpenAI-ish local endpoint,
-  or swap `draft_note()` for a LiteLLM call if you want Claude drafting them.
-- Tracker: `state.db` is plain SQLite — join your own outreach tracking
-  tables onto `queued_companies` if you want reply/follow-up tracking later.
+- **New job board:** add a module to `sources/` with a
+  `fetch(cfg) -> list[Job]`, register it in `REGISTRY` in
+  `sources/__init__.py`, and add its name to `[sources] enabled`. Add it to
+  `LIVENESS` too (`http_is_live`, or its own `is_live(url)`), or
+  `--recheck` never checks its postings. See
+  [Architecture → Sources](docs/architecture.md#sources).
+- **Different model:** any OpenAI-compatible endpoint is config only:
+  `[llm].provider = "openai"` plus `[openai]`, with the key in `.env` (see
+  [Configuration](docs/configuration.md#openai)). For a provider that isn't
+  OpenAI-compatible, add a module to `llm/` with the same `generate()` as
+  `llm/ollama.py` and select it in `llm/__init__.py`'s `generate()`.
+- **Your own tables:** `state.db` is plain SQLite, and `db/` owns the
+  schema, one module per concern. Add a module there for anything you want
+  to track alongside the pipeline's tables.
 
 ## Browser extension
 
