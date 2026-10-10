@@ -48,6 +48,13 @@ from .state import (
 from .workers import build_worker, coverage_worker, note_worker
 
 
+def header_value(value: str) -> str:
+    """A response header value with CR/LF removed, so a value echoed from
+    the request (a redirect target, the extension's Origin) can't end the
+    header early and inject its own."""
+    return value.replace("\r", "").replace("\n", "")
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "simple-job-seeker-web/1.0"
 
@@ -69,7 +76,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def redirect(self, location: str) -> None:
         self.send_response(HTTPStatus.SEE_OTHER)
-        self.send_header("Location", location)
+        self.send_header("Location", header_value(location))
         self.end_headers()
 
     def origin_ok(self) -> bool:
@@ -123,7 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.partition("?")[0]
         if path == "/api/rate" and origin.startswith("chrome-extension://"):
             self.send_response(HTTPStatus.NO_CONTENT)
-            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Origin", header_value(origin))
             self.send_header("Access-Control-Allow-Methods", "POST")
             self.send_header("Access-Control-Allow-Headers",
                              "Content-Type, X-Extension-Token")
@@ -219,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         if origin.startswith("chrome-extension://"):
-            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Origin", header_value(origin))
         self.end_headers()
         self.wfile.write(body)
 

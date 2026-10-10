@@ -165,7 +165,7 @@ def _fit_block(detail: dict, note: str) -> str:
 
 def card_id(uid: str) -> str:
     """A queue card's element id (uids are `source:url`, not id-safe)."""
-    return "t-" + hashlib.sha1(uid.encode()).hexdigest()[:12]
+    return "t-" + hashlib.sha256(uid.encode()).hexdigest()[:12]
 
 
 def log_prompt(conn: sqlite3.Connection, r: sqlite3.Row, date: str) -> str:
