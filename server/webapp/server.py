@@ -28,8 +28,10 @@ from .pages import (
     expired_on,
     get_build_status,
     get_coverage_status,
+    llm_test,
     log_prompt,
     note_block,
+    page_llm,
     progress_oob,
     render_app,
     render_item,
@@ -172,6 +174,8 @@ class Handler(BaseHTTPRequestHandler):
             self.post_app_followup(form)
         elif path == "/applications/sweep":
             self.post_app_sweep(form)
+        elif path == "/llm/test":
+            self.post_llm_test()
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -458,6 +462,16 @@ class Handler(BaseHTTPRequestHandler):
         apps_db.sweep(conn, load_config(), ids)
         conn.close()
         self.redirect("/board")
+
+    def post_llm_test(self) -> None:
+        """"Test model" on /llm: one probe prompt, on this request's thread
+        (seconds, not minutes, so no worker); htmx gets the result block,
+        a plain form the whole page with it filled in."""
+        result = llm_test()
+        if self.headers.get("HX-Request") == "true":
+            self.respond(result)
+            return
+        self.respond(page_llm({}, result))
 
 
 def main() -> int:

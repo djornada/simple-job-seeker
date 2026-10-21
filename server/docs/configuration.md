@@ -293,6 +293,9 @@ model = "z-ai/glm-5.2"
 | `api_key_env` | The **name** of the environment variable holding the key (defaults to `OPENAI_API_KEY`). The key itself goes in `server/.env` — `NVIDIA_API_KEY="nvapi-..."` — or your shell, never in `config.toml`. |
 | `model` | The model name the endpoint expects. |
 
+To check a change, open the web UI's **LLM** tab and hit **Test model**
+(see [Web UI guide](web-ui.md#llm)).
+
 ## `[extension]`
 
 The Chrome extension (`extension/`) POSTs items it reads off LinkedIn to

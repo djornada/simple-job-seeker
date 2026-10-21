@@ -124,9 +124,13 @@ component (e.g. `extension/`).
   (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
   `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
-  NVIDIA NIM), and `__init__.py` as the facade — `generate` dispatches on
-  `[llm].provider` and `strip_think` drops qwen3's `<think>` leakage. Both
-  backends return None when unreachable so the fallback is uniform.
+  NVIDIA NIM), and `__init__.py` as the facade — `_backend` picks the module
+  from `[llm].provider`, `generate` dispatches to it and `strip_think` drops
+  qwen3's `<think>` leakage. Each backend has `complete` (raises
+  `base.LLMError` on an HTTP error, OSError when unreachable), `generate`
+  (wraps it: None on either, so the pipeline's fallback is uniform) and
+  `settings` (model/endpoint for display; the key's env var name and
+  whether it's set, never the key). The facade re-exports all three.
 - profile/ — resume ingestion package, one concern per module (mirrors
   sources/ and db/): `parse.py` builds the profile from the export ZIP,
   `ingest.py` persists it, `cli.py` is the `python -m profile import
@@ -156,7 +160,7 @@ component (e.g. `extension/`).
   card ids and the reply inserts/deletes cards out of band, then notes
   are drafted card by card through `note_worker`), `pages/` (one
   module per route — queue, board, applications, posting, stats,
-  profile; plus due and gaps, the sections Board and Stats render, and
+  profile, llm; plus due and gaps, the sections Board and Stats render, and
   logform: the
   log-touchpoint `<dialog>` Board and queue cards share, filled by htmx
   from `/log-form` or rendered open by `/board?log=` without JS; ticking a
@@ -186,6 +190,11 @@ component (e.g. `extension/`).
   returns each item's gate `flags` for the popup. Flags persist as JSON in
   `queue_items.flags` and render as amber chips on queue cards (and as a
   `- Flags:` line in the markdown queue).
+  `/llm` shows `llm.settings` and a "Test model" button (`POST /llm/test`,
+  same-origin checked): `pages/llm.py`'s `llm_test` sends one JSON-mode
+  probe through `llm.complete` on the request thread and renders the
+  outcome — elapsed time plus reply, the LLMError/OSError text, or a
+  not-JSON warning; htmx gets the result block, a plain form the full page.
   `GET /posting?uid=` shows a job's archived text, archive date and
   original URL; queue cards link to it ("saved posting") when a row exists
   (`pages/queue.py`'s `ITEM_SELECT` adds the `archived` flag). Applications:

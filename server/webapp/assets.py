@@ -124,6 +124,7 @@ table.stats th:first-child, table.stats td:first-child { text-align: left; }
 table.stats th { font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--muted); font-weight: 600; }
 table.stats td.rate { font-family: var(--mono); }
+table.stats.kv td { text-align: left; overflow-wrap: anywhere; }  /* /llm's settings */
 .caveat { color: var(--muted); font-size: 12.5px; margin: 2px 0 18px; }
 .scrollx { overflow-x: auto; }  /* a table wider than a phone scrolls alone */
 pre.profiletext { white-space: pre-wrap; word-break: break-word;
@@ -213,7 +214,7 @@ button.linkbtn { background: none; border: 0; padding: 0; font: inherit;
 """
 
 TABS = [("/", "Queue"), ("/board", "Board"), ("/applications", "Applications"),
-        ("/stats", "Stats"), ("/profile", "Résumé")]
+        ("/stats", "Stats"), ("/profile", "Résumé"), ("/llm", "LLM")]
 
 # favicon lives at the project root; loaded once, served as static bytes
 try:
