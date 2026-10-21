@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .applications import expired_on, page_applications, render_app
 from .board import page_board
+from .llm import llm_test, page_llm
 from .logform import get_log_form, log_button, log_dialog
 from .posting import page_posting
 from .profile import page_profile
@@ -30,6 +31,7 @@ GET_ROUTES = {
     "/posting": page_posting,
     "/stats": page_stats,
     "/profile": page_profile,
+    "/llm": page_llm,
     "/log-form": get_log_form,
     "/note-status": get_note_status,
     "/coverage-status": get_coverage_status,
@@ -37,7 +39,7 @@ GET_ROUTES = {
 }
 
 __all__ = ["GET_ROUTES", "ITEM_SELECT", "expired_on", "get_build_status",
-           "get_coverage_status", "get_log_form", "log_button", "log_dialog",
-           "log_prompt", "note_block", "page_applications", "page_board",
-           "page_posting", "page_profile", "page_queue", "page_stats",
+           "get_coverage_status", "get_log_form", "llm_test", "log_button",
+           "log_dialog", "log_prompt", "note_block", "page_applications",
+           "page_board", "page_llm", "page_posting", "page_profile", "page_queue", "page_stats",
            "progress_oob", "render_app", "render_item"]

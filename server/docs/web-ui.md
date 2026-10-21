@@ -22,7 +22,7 @@ generates links. The click is still human.
 
 ## Navigation
 
-Tabs across the top: **Queue · Board · Applications · Stats · Résumé**.
+Tabs across the top: **Queue · Board · Applications · Stats · Résumé · LLM**.
 The **Board** tab shows a badge with the number of things that need
 attention: follow-ups due and applications gone quiet.
 
@@ -189,6 +189,25 @@ Import and review your LinkedIn profile.
 
 Full details, including how the import feeds ranking and notes:
 [Résumé matching](resume-matching.md).
+
+---
+
+## LLM
+
+Check that the model in `config.toml` actually answers, without running a
+build.
+
+- **Settings:** the `[llm].provider`, the backend it resolves to, and that
+  backend's model and endpoint. For `"openai"` it also shows the name of the
+  API-key variable and whether it's set — never the key itself.
+- **Test model** sends one short prompt in JSON mode (the mode the re-rank
+  and keyword checks use) and shows how long it took and the reply, or the
+  reason it failed: the HTTP status and message (401 bad key, 404 unknown
+  model or endpoint, 429 rate limit) or "unreachable" (Ollama not running,
+  wrong URL). A reply that isn't JSON is flagged too, since those stages
+  would fail to parse it.
+- `config.toml` is re-read on each request, so edit and test again without a
+  restart. A key changed in `.env` needs a restart.
 
 ---
 

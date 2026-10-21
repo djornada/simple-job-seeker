@@ -171,8 +171,10 @@ card compares one posting against your profile
 - **Different model:** any OpenAI-compatible endpoint is config only:
   `[llm].provider = "openai"` plus `[openai]`, with the key in `.env` (see
   [Configuration](docs/configuration.md#openai)). For a provider that isn't
-  OpenAI-compatible, add a module to `llm/` with the same `generate()` as
-  `llm/ollama.py` and select it in `llm/__init__.py`'s `generate()`.
+  OpenAI-compatible, add a module to `llm/` with the same `settings()`,
+  `complete()` and `generate()` as `llm/ollama.py` and select it in
+  `llm/__init__.py`'s `_backend()`. The web UI's **LLM** tab tests whichever
+  one is configured.
 - **Your own tables:** `state.db` is plain SQLite, and `db/` owns the
   schema, one module per concern. Add a module there for anything you want
   to track alongside the pipeline's tables.
