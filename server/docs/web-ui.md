@@ -63,6 +63,10 @@ Each card shows the **company**, a keyword-score badge, a meta line
   `[targets] people_roles` (e.g. Technical Recruiter, Engineering Manager) at
   that company.
 - **Google x-ray** — a `site:linkedin.com/in` search as a fallback.
+- **ATS search** — WWR cards only: a Google search for the same company and
+  title on Greenhouse, Lever, Ashby and Workable. WWR can lock its apply
+  button behind an account or a paid plan; the employer's own posting
+  usually takes applications without either.
 - **Log** — opens the [log dialog](#logging-a-touchpoint) with the company
   filled in.
 

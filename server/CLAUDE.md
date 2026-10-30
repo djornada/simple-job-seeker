@@ -46,7 +46,10 @@ component (e.g. `extension/`).
   a warning, not a crash; `LIVENESS`, each board's `is_live(url) -> bool |
   None` for the expiry check — `http_is_live` by default (404/410 gone),
   `hn.is_live` asks Algolia, `wwr.is_live` treats a redirect off
-  `/remote-jobs/` as gone). `base.py`'s `is_linkedin` guards every request:
+  `/remote-jobs/` as gone). `wwr._location` fills `Job.location` from the
+  feed's `country` list (the real limit — "Anywhere in the World" can
+  still be US-only) or else its `region`, so `brazil_friendly_only` sees
+  it. `base.py`'s `is_linkedin` guards every request:
   `_get` refuses LinkedIn hosts, `http_probe` returns None for them without
   a request, and the shared opener won't follow a redirect to LinkedIn.
   Add a board by dropping a module here and registering it.
@@ -119,8 +122,10 @@ component (e.g. `extension/`).
   source's `LIVENESS` check; False sets `postings.expired_at`, anything
   else only `checked_at`; sources missing from LIVENESS, like the
   extension's LinkedIn items, are never selected); `links.py`
-  (`build_links`: LinkedIn people-search + Google x-ray URLs — URLs only,
-  the click is human); `render.py`
+  (`build_links`: LinkedIn people-search + Google x-ray URLs, plus an
+  `ats_search` Google link over Greenhouse/Lever/Ashby/Workable for
+  `GATED_BOARDS` (WWR, whose apply can need an account or a paid plan) —
+  URLs only, the click is human); `render.py`
   (`render` queue → markdown + `show_stats`, CLI-only).
 - llm/ — pluggable LLM backend, one module per provider (mirrors sources/):
   `ollama.py` (local), `openai.py` (any OpenAI-compatible endpoint, e.g.
