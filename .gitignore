@@ -12,3 +12,4 @@ __pycache__/
 # local assistant/tooling state — machine-specific, never commit
 .claude/
 .tokensave/
+graphify-out/
