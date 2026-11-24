@@ -3,15 +3,42 @@
 > **Work in progress** — under active development, expect rough edges and
 > breaking changes.
 
-Personal tooling for a remote job search: a Python pipeline that scores
-jobs from remote boards into a daily queue with prebuilt LinkedIn search
-links, plus a Chrome extension that scores whatever's on screen on the
-LinkedIn feed or a Jobs page.
-
 ## Why
 
-Automate the research, not the outreach. The click stays human — keeps the
-account safe from bans. See `CLAUDE.md` for the exact rule.
+A remote job search is mostly triage. Each day goes to checking several job
+boards, opening postings to see if they fit, confirming they are still open,
+and finding the right people to contact. Little of that time goes to the work
+that gets replies.
+
+This tool cuts the triage down to a short, ranked daily queue, so the time
+goes to applying and reaching out. A Python pipeline pulls listings from
+remote job boards, applies deterministic filters and keyword scoring, and
+drops the best matches into one queue with prebuilt LinkedIn search links. A
+local web UI tracks outreach and applications.
+
+Nothing touches LinkedIn programmatically. The tool generates links and
+ratings; every click is yours. This keeps the account safe from bans. See
+`CLAUDE.md` for the rule.
+
+### Where AI is used, and where it is not
+
+The pipeline is deterministic by default. An LLM is called only where
+judgment over text is needed, and only if you configure one:
+
+| Step | Uses AI? | Why |
+| --- | --- | --- |
+| Fetching listings from boards | No | Plain HTTP and feed parsing |
+| Language, eligibility and region gates | No | Rules over the posting text |
+| Keyword scoring and per-company dedup | No | Deterministic scoring |
+| Checking whether a posting has expired | No | HTTP status or the board's API |
+| Building LinkedIn and ATS search links | No | URL construction |
+| Importing your LinkedIn export | No | Parsing a local ZIP |
+| Résumé fit re-rank (optional) | Yes | Judges skills and experience against the posting; needs an imported résumé |
+| Connection note drafts (optional) | Yes | Writes a short note in your voice |
+| Keyword coverage check (on demand) | Yes | Extracts required terms from a posting |
+
+With no LLM configured or reachable, the queue still builds from the keyword
+pipeline alone; the AI features just stay off.
 
 ## Demo
 
@@ -28,10 +55,6 @@ Still: [the daily queue](docs/screenshots/daily-queue.png).
 - **`server/`** — Python pipeline: collection, scoring, SQLite state, web
   UI, outreach tracker. Stdlib only. See
   [`server/README.md`](server/README.md).
-- **`extension/`** — Chrome extension (Manifest V3, no build step). Manual
-  click reads the LinkedIn feed/Jobs page, POSTs to `server/`'s
-  `/api/rate` for scoring; hits land in the same queue. Read-only against
-  the page. See [`extension/README.md`](extension/README.md).
 
 ## Quick start
 
@@ -73,26 +96,11 @@ Two windows: `web` runs `docker compose up` with the server log (Ctrl-C
 stops the container; `Ctrl-b d` detaches from tmux and leaves the session
 running), and `shell` opens at the repo root.
 
-## Browser extension
-
-`extension/` scores whatever's on screen on the LinkedIn feed or a Jobs
-page, on your click — nothing runs in the background, nothing is clicked
-for you. Anything that clears the bar lands in today's queue.
-
-1. In `server/config.toml`, set `[extension].token` to any random string.
-2. `chrome://extensions` → **Developer mode** → **Load unpacked** → pick
-   `extension/`.
-3. With the web UI running, open the extension popup and paste the same
-   token.
-
-Usage and fixing empty scans: [`extension/README.md`](extension/README.md).
-
 ## Documentation
 
 | Doc | What's in it |
 | --- | --- |
 | [`server/README.md`](server/README.md) | Server: quick start, configuration, daily routine, tracker, applications, cron. Full docs in [`server/docs/`](server/docs/README.md) |
-| [`extension/README.md`](extension/README.md) | Chrome extension setup and use |
 
 ## Inspiration and alternatives
 

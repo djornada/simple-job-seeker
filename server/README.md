@@ -1,17 +1,4 @@
-# simple-job-seeker
-
-Daily target queue for your remote job-search outreach. Fetches remote job
-boards, filters roles matching your profile, dedups against local state, and
-outputs a markdown queue with prebuilt LinkedIn search links.
-
-**Design principle: the script decides, you click.** Nothing here touches
-LinkedIn programmatically — no scraping, no automated visits, no auto-connect.
-That keeps your account safe. The automation is in the research, not the action.
-
-Start at the [root README](../README.md) for the overview, Docker setup and
-the Chrome extension. The full docs live in [`docs/`](docs/README.md).
-
-## Requirements
+# Requirements
 
 Python 3.11+ (stdlib only — no pip install needed).
 Optional: an LLM for `--notes`, résumé fit and keyword checks — a local
@@ -50,19 +37,19 @@ for a senior full-stack profile hiring from Brazil, so make it yours first:
    citizenship and region phrases that rule a posting out for you.
 3. **`[sources]`**: the search terms sent to each job board.
 
-| Section | What it controls |
-| --- | --- |
-| `[targets]` | Queue size, company cooldown, and which LinkedIn people searches each card gets (recruiters, EMs…) |
-| `[sources]` | Job boards to pull from (RemoteOK, Remotive, We Work Remotely, HN "Who is hiring?", freehire.me) and their search terms |
-| `[filters]` | Keyword scoring: a role keyword must match the title, stack keywords add points, exclude keywords reject; Brazil-friendly location filter |
-| `[gates]` | Rejects postings you can't be hired for — required languages, citizenship or clearance, region-only — before any LLM call |
-| `[resume]` / `[resume.weights]` | Résumé-fit re-rank: how many jobs the LLM judges, the score cut, your career goals, the weight of each fit dimension |
-| `[keywords.aliases]` | Skill spellings to merge (`k8s` → `kubernetes`) for skill gaps and keyword checks |
-| `[expiry]` | Limits for `queue_agent.py --recheck`, which marks taken-down postings expired |
-| `[applications]` | When a tracked application is due a follow-up, or gets offered as `no_response` |
-| `[web]` | Web UI bind address and port — keep `127.0.0.1` |
-| `[llm]` / `[ollama]` / `[openai]` | LLM backend for notes, résumé fit and keyword checks: a local Ollama (default) or any OpenAI-compatible endpoint |
-| `[extension]` | The token that turns on the Chrome extension's `/api/rate` endpoint |
+| Section                           | What it controls                                                                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `[targets]`                       | Queue size, company cooldown, and which LinkedIn people searches each card gets (recruiters, EMs…)                                        |
+| `[sources]`                       | Job boards to pull from (RemoteOK, Remotive, We Work Remotely, HN "Who is hiring?", freehire.me) and their search terms                   |
+| `[filters]`                       | Keyword scoring: a role keyword must match the title, stack keywords add points, exclude keywords reject; Brazil-friendly location filter |
+| `[gates]`                         | Rejects postings you can't be hired for — required languages, citizenship or clearance, region-only — before any LLM call                 |
+| `[resume]` / `[resume.weights]`   | Résumé-fit re-rank: how many jobs the LLM judges, the score cut, your career goals, the weight of each fit dimension                      |
+| `[keywords.aliases]`              | Skill spellings to merge (`k8s` → `kubernetes`) for skill gaps and keyword checks                                                         |
+| `[expiry]`                        | Limits for `queue_agent.py --recheck`, which marks taken-down postings expired                                                            |
+| `[applications]`                  | When a tracked application is due a follow-up, or gets offered as `no_response`                                                           |
+| `[web]`                           | Web UI bind address and port — keep `127.0.0.1`                                                                                           |
+| `[llm]` / `[ollama]` / `[openai]` | LLM backend for notes, résumé fit and keyword checks: a local Ollama (default) or any OpenAI-compatible endpoint                          |
+| `[extension]`                     | The token that turns on the Chrome extension's `/api/rate` endpoint                                                                       |
 
 Every key, with defaults: [Configuration](docs/configuration.md).
 
@@ -143,7 +130,7 @@ python3 tracker.py sweep        # quiet too long → no_response (asks y/N)
 
 - Statuses: open `applied → interview → offer`, forward only; final
   `hired`, `rejected`, `no_response`, `withdrawn`, `declined`. `move
-  --force` allows anything else (going backwards, reopening a final one).
+--force` allows anything else (going backwards, reopening a final one).
 - One application per company + role. Every status change and follow-up
   is also logged as an outreach action, so `board`, `history` and the web
   UI's `/board` and `/stats` include it.
@@ -228,21 +215,14 @@ card compares one posting against your profile
   schema, one module per concern. Add a module there for anything you want
   to track alongside the pipeline's tables.
 
-## Browser extension
-
-`../extension/` scores whatever's on screen on the LinkedIn feed or a Jobs
-page against the same filters and résumé fit, through this server's
-`/api/rate`. Setup: [root README](../README.md#browser-extension) and
-[`extension/README.md`](../extension/README.md).
-
 ## Documentation
 
-| Doc | What's in it |
-| --- | --- |
-| [Getting started](docs/getting-started.md) | Requirements, setup, a guided first run |
-| [Concepts](docs/concepts.md) | The mental model: queue, targets, the checkbox, the pipeline |
-| [Web UI guide](docs/web-ui.md) | The web UI, page by page |
-| [CLI reference](docs/cli-reference.md) | Commands and flags: `queue_agent.py`, `tracker.py`, `profile` |
-| [Résumé matching](docs/resume-matching.md) | How résumé fit and keyword coverage work |
-| [Configuration](docs/configuration.md) | Every setting in `config.toml` |
-| [Architecture](docs/architecture.md) | Components, data model, sources, privacy design |
+| Doc                                        | What's in it                                                  |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| [Getting started](docs/getting-started.md) | Requirements, setup, a guided first run                       |
+| [Concepts](docs/concepts.md)               | The mental model: queue, targets, the checkbox, the pipeline  |
+| [Web UI guide](docs/web-ui.md)             | The web UI, page by page                                      |
+| [CLI reference](docs/cli-reference.md)     | Commands and flags: `queue_agent.py`, `tracker.py`, `profile` |
+| [Résumé matching](docs/resume-matching.md) | How résumé fit and keyword coverage work                      |
+| [Configuration](docs/configuration.md)     | Every setting in `config.toml`                                |
+| [Architecture](docs/architecture.md)       | Components, data model, sources, privacy design               |
