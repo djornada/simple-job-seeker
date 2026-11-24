@@ -18,16 +18,15 @@ Optional: an LLM for `--notes`, résumé fit and keyword checks — a local
 [Ollama](https://ollama.com) by default, or any OpenAI-compatible endpoint
 (see `[llm]` in [Configuration](docs/configuration.md#llm)).
 
-To set up Ollama, run `./install.sh` — it checks for Ollama (offering to
-install it), detects your GPU's VRAM, pulls a model sized to fit, and
-points `config.toml` at it. Pass a name to override: `./install.sh qwen3:8b`.
+To use Ollama, install it from [ollama.com](https://ollama.com), pull a model
+that fits your GPU (`ollama pull qwen3:8b`), and set `model` under `[ollama]`
+in `config.toml` to match.
 
 ## Quick start
 
 ```sh
 cd server
 $EDITOR config.toml          # your roles, stack and languages (see Configuration)
-./install.sh                 # optional: local Ollama + a GPU-fitted model
 python3 queue_agent.py       # build today's queue
 python3 -m webapp            # local web UI at http://127.0.0.1:3000
 ```
@@ -243,7 +242,7 @@ page against the same filters and résumé fit, through this server's
 | [Getting started](docs/getting-started.md) | Requirements, setup, a guided first run |
 | [Concepts](docs/concepts.md) | The mental model: queue, targets, the checkbox, the pipeline |
 | [Web UI guide](docs/web-ui.md) | The web UI, page by page |
-| [CLI reference](docs/cli-reference.md) | Commands and flags: `queue_agent.py`, `tracker.py`, `profile`, `install.sh` |
+| [CLI reference](docs/cli-reference.md) | Commands and flags: `queue_agent.py`, `tracker.py`, `profile` |
 | [Résumé matching](docs/resume-matching.md) | How résumé fit and keyword coverage work |
 | [Configuration](docs/configuration.md) | Every setting in `config.toml` |
 | [Architecture](docs/architecture.md) | Components, data model, sources, privacy design |

@@ -8,7 +8,6 @@ tools share the same `state.db`, so you can mix and match freely.
 - [`queue_agent.py`](#queue_agentpy) — build the daily queue
 - [`tracker.py`](#trackerpy) — log and track outreach
 - [`profile`](#profile) — import your résumé
-- [`install.sh`](#installsh) — set up a local Ollama model
 - [`webapp`](#webapp) — the web UI
 
 ---
@@ -102,21 +101,6 @@ python -m profile show
 
 The ZIP is read locally only — nothing is sent to LinkedIn. Where to get it
 and what it changes: [Résumé matching](resume-matching.md).
-
----
-
-## install.sh
-
-One-shot setup for the optional AI features.
-
-```bash
-./install.sh
-```
-
-It ensures Ollama is installed, detects your GPU VRAM (`nvidia-smi`, or the
-amdgpu sysfs for AMD cards), picks a `qwen3` model from a size ladder that
-fits your card, pulls it, and updates `[ollama] model` in `config.toml`.
-Only needed if you want drafted notes or the résumé re-rank.
 
 ---
 

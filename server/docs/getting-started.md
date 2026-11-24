@@ -69,13 +69,14 @@ queue — see the [Web UI guide](web-ui.md).
 
 The draft-notes and résumé re-rank features need a local model.
 
+Install Ollama, pull a `qwen3` model that fits your GPU's VRAM, and set
+`[ollama] model` in `config.toml` to the same tag:
+
 ```bash
-./install.sh
+ollama pull qwen3:8b
 ```
 
-`install.sh` makes sure Ollama is installed, detects your GPU's VRAM, picks a
-`qwen3` model that fits, pulls it, and writes the choice into
-`[ollama] model` in `config.toml`. Then:
+Then:
 
 ```bash
 python queue_agent.py --notes     # also draft connection notes

@@ -243,10 +243,6 @@ component (e.g. `extension/`).
 - config.toml — all configuration (sources, filters, gates, targets,
   resume + resume.weights, keywords.aliases, expiry, applications, llm
   provider, ollama, openai, extension token).
-- install.sh — bash setup helper: ensures Ollama is installed, detects GPU
-  VRAM (nvidia-smi, or amdgpu sysfs for AMD), picks a fitting qwen3 model
-  from a size ladder, pulls it, and updates the `[ollama]` model in
-  config.toml.
 - state.db, queues/ and cron.log are local and gitignored (they contain
   data about real people).
 

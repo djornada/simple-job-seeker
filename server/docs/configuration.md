@@ -273,7 +273,7 @@ model = "qwen3:14b"
 | Key | Meaning |
 | --- | --- |
 | `url` | Where your Ollama server listens. |
-| `model` | The model tag to use. `install.sh` sets this to a GPU-fitted `qwen3` automatically. |
+| `model` | The model tag to use, e.g. `qwen3:8b`. It must match a model pulled with `ollama pull`. |
 
 ## `[openai]`
 
