@@ -35,19 +35,8 @@ Still: [the daily queue](docs/screenshots/daily-queue.png).
 
 ## Quick start
 
-```sh
-cd server
-$EDITOR config.toml          # your roles, stack and languages (see Configuration)
-./install.sh                 # optional: local Ollama + a GPU-fitted model
-python3 queue_agent.py       # build today's queue
-python3 -m webapp            # local web UI at http://127.0.0.1:3000
-```
-
-Both share the same `state.db`. Import your LinkedIn export on the web
-UI's Résumé tab to turn on résumé-fit scoring. See
-[`server/README.md`](server/README.md) for the full workflow (tracker,
-cron, résumé matching) and
-[Getting started](server/docs/getting-started.md) for a guided first run.
+Run the server with Docker or tmuxinator, below. To run it directly with
+Python, see [server/README.md](server/README.md#quick-start).
 
 ### With Docker
 
@@ -60,14 +49,15 @@ docker compose down
 ```
 
 Compose mounts `server/` into the container, so `state.db`, `config.toml`,
-`.env` and `queues/` stay on your machine, shared with the commands above.
+`server/.env` and `queues/` stay on your machine, shared with the commands above.
 After a code change, `docker compose restart` is enough; no rebuild. It
 uses host networking (Linux), so the web UI still binds to `127.0.0.1` only
 and reaches a local Ollama on `localhost:11434`. The container comes back
 with Docker after a reboot until you run `docker compose down`.
 
 It runs as uid/gid 1000. If yours differ (`id -u`, `id -g`), set `UID` and
-`GID` in a `.env` at the repo root (gitignored), or files the container
+`GID` in a `.env` at the repo root (gitignored; Compose reads it for variable
+substitution, it is not mounted into the container), or files the container
 writes won't be yours.
 
 ### With tmuxinator
@@ -75,48 +65,13 @@ writes won't be yours.
 From the repo root:
 
 ```sh
-tmuxinator start           # attach to the job-seeker session
-tmuxinator stop job-seeker # also runs docker compose down
+tmuxinator start job-seeker  # attach to the job-seeker session
+tmuxinator stop job-seeker   # also runs docker compose down
 ```
 
 Two windows: `web` runs `docker compose up` with the server log (Ctrl-C
-stops the container, `d` detaches and leaves it running), and `shell` opens
-at the repo root.
-
-## Configuration
-
-Everything lives in one file, **`server/config.toml`**, read fresh on every
-run: edit it and the next build or page reload picks it up. It ships tuned
-for a senior full-stack profile hiring from Brazil, so make it yours first:
-
-1. **`[filters]`**: the roles (`role_keywords`, matched against the title)
-   and stack (`stack_keywords`) you want, what to drop
-   (`exclude_keywords`), and `brazil_friendly_only = false` if you're not
-   hiring from Brazil.
-2. **`[gates]`**: the languages you work in, with your level, plus the
-   citizenship and region phrases that rule a posting out for you.
-3. **`[sources]`**: the search terms sent to each job board.
-
-| Section | What it controls |
-| --- | --- |
-| `[targets]` | Queue size, company cooldown, and which LinkedIn people searches each card gets (recruiters, EMs…) |
-| `[sources]` | Job boards to pull from (RemoteOK, Remotive, We Work Remotely, HN "Who is hiring?", freehire.me) and their search terms |
-| `[filters]` | Keyword scoring: a role keyword must match the title, stack keywords add points, exclude keywords reject; Brazil-friendly location filter |
-| `[gates]` | Rejects postings you can't be hired for — required languages, citizenship or clearance, region-only — before any LLM call |
-| `[resume]` / `[resume.weights]` | Résumé-fit re-rank: how many jobs the LLM judges, the score cut, your career goals, the weight of each fit dimension |
-| `[keywords.aliases]` | Skill spellings to merge (`k8s` → `kubernetes`) for skill gaps and keyword checks |
-| `[expiry]` | Limits for `queue_agent.py --recheck`, which marks taken-down postings expired |
-| `[applications]` | When a tracked application is due a follow-up, or gets offered as `no_response` |
-| `[web]` | Web UI bind address and port — keep `127.0.0.1` |
-| `[llm]` / `[ollama]` / `[openai]` | LLM backend for notes, résumé fit and keyword checks: a local Ollama (default) or any OpenAI-compatible endpoint |
-| `[extension]` | The token that turns on the Chrome extension's `/api/rate` endpoint |
-
-Every key, with defaults: [Configuration](server/docs/configuration.md).
-
-API keys never go in `config.toml` (it's committed). Put them in
-**`server/.env`** (gitignored), e.g. `NVIDIA_API_KEY="nvapi-..."` when
-`[llm].provider = "openai"`. The `.env` at the repo root is only for
-Docker's `UID`/`GID`.
+stops the container; `Ctrl-b d` detaches from tmux and leaves the session
+running), and `shell` opens at the repo root.
 
 ## Browser extension
 
@@ -136,14 +91,7 @@ Usage and fixing empty scans: [`extension/README.md`](extension/README.md).
 
 | Doc | What's in it |
 | --- | --- |
-| [`server/README.md`](server/README.md) | Pipeline, daily routine, tracker, applications, cron |
-| [Getting started](server/docs/getting-started.md) | Requirements, setup, your first queue |
-| [Concepts](server/docs/concepts.md) | The mental model: queue, targets, the checkbox, the pipeline |
-| [Web UI guide](server/docs/web-ui.md) | Every page, button and workflow |
-| [CLI reference](server/docs/cli-reference.md) | `queue_agent.py`, `tracker.py`, `profile`, `install.sh` |
-| [Résumé matching](server/docs/resume-matching.md) | Import your résumé, re-rank, personalize notes |
-| [Configuration](server/docs/configuration.md) | Every setting in `config.toml` |
-| [Architecture](server/docs/architecture.md) | Components, data model, sources, privacy design |
+| [`server/README.md`](server/README.md) | Server: quick start, configuration, daily routine, tracker, applications, cron. Full docs in [`server/docs/`](server/docs/README.md) |
 | [`extension/README.md`](extension/README.md) | Chrome extension setup and use |
 
 ## Inspiration and alternatives
