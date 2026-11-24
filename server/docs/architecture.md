@@ -23,7 +23,6 @@ database, and one config file. No framework, no third-party packages.
 | `tracker.py` | Outreach CLI (add/due/done/board/history); writes the `outreach` table. |
 | `webapp/` | Local web UI over the same pipeline and DB (`http.server` + `sqlite3`). |
 | `config.toml` | All configuration. Read fresh on every run. |
-| `install.sh` | Optional: install/select a GPU-fitted Ollama model. |
 | `state.db`, `queues/`, `cron.log` | Local, gitignored data. |
 
 ## Data flow
